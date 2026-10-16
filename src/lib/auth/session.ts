@@ -13,7 +13,7 @@ export async function isSecureRequest(): Promise<boolean> {
   return (process.env.APP_URL ?? "").startsWith("https://");
 }
 
-export async function createSession(userId: string): Promise<void> {
+export async function createSession(userId: number): Promise<void> {
   const token = randomToken();
   const h = await headers();
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
@@ -51,7 +51,7 @@ export const getSessionUser = cache(async () => {
   return session.user;
 });
 
-export async function destroyAllSessions(userId: string, exceptCurrent = true): Promise<void> {
+export async function destroyAllSessions(userId: number, exceptCurrent = true): Promise<void> {
   const jar = await cookies();
   const token = unsignValue(jar.get(SESSION_COOKIE)?.value);
   await db.session.deleteMany({

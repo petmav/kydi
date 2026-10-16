@@ -1,34 +1,42 @@
 @import "tailwindcss";
 
+/*
+ * Halyard design tokens. Conservative business palette: white / light-grey surfaces,
+ * slate text, thin grey borders, one navy-blue accent. No gradients, no blur, system fonts.
+ */
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
-  --color-brand-50: oklch(0.97 0.014 240);
-  --color-brand-100: oklch(0.93 0.032 240);
-  --color-brand-200: oklch(0.87 0.06 242);
-  --color-brand-300: oklch(0.78 0.1 244);
-  --color-brand-400: oklch(0.68 0.14 247);
-  --color-brand-500: oklch(0.58 0.16 251);
-  --color-brand-600: oklch(0.5 0.16 255);
-  --color-brand-700: oklch(0.43 0.14 257);
-  --color-brand-800: oklch(0.36 0.11 258);
-  --color-brand-900: oklch(0.3 0.08 260);
-  --color-brand-950: oklch(0.22 0.06 262);
+  /* Accent (navy / blue, #1E40AF – #2563EB) */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+  --color-brand-950: #172554;
 
+  /* Surfaces, text, borders */
   --color-surface: #ffffff;
-  --color-canvas: oklch(0.985 0.003 250);
-  --color-ink: oklch(0.22 0.02 260);
-  --color-muted: oklch(0.52 0.02 258);
-  --color-line: oklch(0.92 0.008 255);
+  --color-canvas: #f8fafc;
+  --color-subtle: #f1f5f9;
+  --color-ink: #0f172a;
+  --color-ink-2: #334155;
+  --color-muted: #64748b;
+  --color-line: #e2e8f0;
 
-  --radius-card: 0.75rem;
-  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  --radius-card: 0.375rem;
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.05);
 }
 
 @utility focus-ring {
   &:focus-visible {
-    outline: 2px solid var(--color-brand-500);
+    outline: 2px solid var(--color-brand-600);
     outline-offset: 2px;
   }
 }
@@ -43,24 +51,25 @@
     font-family: var(--font-sans);
   }
   :focus-visible {
-    outline: 2px solid var(--color-brand-500);
+    outline: 2px solid var(--color-brand-600);
     outline-offset: 2px;
   }
-  .tabular {
-    font-variant-numeric: tabular-nums;
-  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 .animate-toast-in {
-  animation: toast-in 160ms ease-out;
+  animation: toast-in 140ms ease-out;
 }

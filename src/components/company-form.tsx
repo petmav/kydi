@@ -31,7 +31,7 @@ export function CompanyForm({
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <SelectField
-          name="timezone"
+          name="time_zone"
           label="Time zone"
           required
           options={timezones}
@@ -40,8 +40,8 @@ export function CompanyForm({
         <SelectField name="locale" label="Number format" required options={locales} defaultValue="en-US" />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField name="dateFormat" label="Date format" required options={dateFormats} defaultValue="yyyy-MM-dd" />
-        <SelectField name="fiscalYearStartMonth" label="Fiscal year starts" required options={months} defaultValue="1" />
+        <SelectField name="date_format" label="Date format" required options={dateFormats} defaultValue="yyyy-MM-dd" />
+        <SelectField name="fiscal_year" label="Fiscal year" required options={months} defaultValue="1-12" />
       </div>
       <SubmitButton className="w-full" size="lg" pendingLabel="Creating…">
         {submitLabel}
