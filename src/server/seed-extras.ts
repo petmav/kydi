@@ -4,6 +4,7 @@ import { addDaysIso } from "@/lib/dates";
 import type { SeedRefs } from "./seed";
 import { savePayment } from "./payments";
 import { saveExpense } from "./expenses";
+import { saveRecurring } from "./recurring";
 
 /** Additional demo data (payments, expenses, recurring) added by later modules. */
 export async function seedExtras(ctx: CompanyContext, refs: SeedRefs): Promise<void> {
@@ -64,5 +65,17 @@ export async function seedExtras(ctx: CompanyContext, refs: SeedRefs): Promise<v
     const c = cats.find((x) => x.name === cat)!;
     const r = await saveExpense(ctx, null, { expenseDate: addDaysIso(refs.today, -daysAgo), expenseNumber: null, categoryId: c.id, amount, currency: ctx.settings.currency, exchangeRate: 1, customerId: null, paymentMethodId: methods[2]?.id ?? null, notes, taxes: cat === "Office supplies" ? [{ taxTypeId: refs.taxes.input, amount: Math.round(amount / 6) }] : [], removeReceipt: false, minor: true }, null, {});
     if (!r.ok) throw new Error("seed expense failed: " + r.error);
+  }
+
+  const hosting = await db.item.findFirst({ where: { companyId: ctx.companyId, name: "Hosting (monthly)" } });
+  if (hosting) {
+    const r = await saveRecurring(
+      ctx,
+      null,
+      { customerId: refs.customers[1].id, date: "", closingDate: null, number: "", referenceNumber: null, exchangeRate: 1, discountType: "FIXED", discount: 0, taxIncluded: false, notes: "<p>Monthly managed hosting.</p>", templateName: "invoice1", taxes: [refs.taxes.salesTax], lines: [{ itemId: hosting.id, name: hosting.name, description: hosting.description, unitName: null, quantity: 1, price: "49.00", discountType: "FIXED", discount: 0, taxes: [] }] },
+      { startsAt: addDaysIso(refs.today, -40), frequency: "0 0 1 * *", limitBy: "NONE", status: "ACTIVE", sendAutomatically: false, notifyCreator: false },
+      {},
+    );
+    if (!r.ok) throw new Error("seed recurring failed: " + r.error);
   }
 }
