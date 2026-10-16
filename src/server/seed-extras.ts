@@ -3,6 +3,7 @@ import type { CompanyContext } from "@/lib/auth/context";
 import { addDaysIso } from "@/lib/dates";
 import type { SeedRefs } from "./seed";
 import { savePayment } from "./payments";
+import { saveExpense } from "./expenses";
 
 /** Additional demo data (payments, expenses, recurring) added by later modules. */
 export async function seedExtras(ctx: CompanyContext, refs: SeedRefs): Promise<void> {
@@ -43,4 +44,25 @@ export async function seedExtras(ctx: CompanyContext, refs: SeedRefs): Promise<v
   }
   // An unapplied payment so "Apply credit" has something to work with.
   await savePayment(ctx, null, { customerId: refs.customers[0].id, paymentDate: addDaysIso(refs.today, -2), paymentNumber: "", amount: 50000, exchangeRate: 1, paymentMethodId: methods[3]?.id ?? null, notes: null, allocations: [], minor: true }, {});
+
+  const cats = await db.expenseCategory.findMany({ where: { companyId: ctx.companyId } });
+  const spend: [string, number, number, string][] = [
+    ["Software", 4900, 330, "Design tool subscription"],
+    ["Software", 4900, 300, "Design tool subscription"],
+    ["Travel", 38750, 280, "Client workshop flights"],
+    ["Meals", 8640, 279, "Team lunch with client"],
+    ["Office supplies", 12999, 220, "Monitor arm and cables"],
+    ["Contractors", 150000, 180, "Illustration subcontract"],
+    ["Software", 4900, 150, "Design tool subscription"],
+    ["Travel", 21500, 95, "Train tickets"],
+    ["Contractors", 90000, 60, "Copywriting"],
+    ["Software", 4900, 30, "Design tool subscription"],
+    ["Meals", 4320, 12, "Coffee meeting"],
+    ["Office supplies", 3499, 4, "Printer paper"],
+  ];
+  for (const [cat, amount, daysAgo, notes] of spend) {
+    const c = cats.find((x) => x.name === cat)!;
+    if (!r.ok) throw new Error("seed expense failed: " + r.error);
+    if (!r.ok) throw new Error();
+  }
 }
