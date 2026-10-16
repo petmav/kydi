@@ -14,13 +14,15 @@ import { addDaysIso } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export type DocCustomer = { id: number; name: string; currency: string; email: string | null };
-export type DocItem = { id: number; name: string; description: string | null; price: number; unitName: string | null; taxIds: number[] };
+export type DocItem = { id: number; name: string; description: string | null; price: number; unitName: string | null; taxIds: number[]; fields?: Record<string, string> };
 export type DocTax = { id: number; name: string; calculationType: "PERCENTAGE" | "FIXED"; percent: number | null; fixedAmount: number | null; compound: boolean };
-export type LineState = { key: string; itemId: number | null; name: string; description: string; unitName: string; quantity: string; price: string; discountType: "FIXED" | "PERCENTAGE"; discount: string; taxes: number[] };
+export type LineState = { key: string; itemId: number | null; name: string; description: string; unitName: string; quantity: string; price: string; discountType: "FIXED" | "PERCENTAGE"; discount: string; taxes: number[]; customFields: Record<string, string> };
 export type RecurringState = { startsAt: string; frequency: string; limitBy: "NONE" | "COUNT" | "DATE"; limitCount: string; limitDate: string; status: "ACTIVE" | "ON_HOLD" | "COMPLETED"; sendAutomatically: boolean; notifyCreator: boolean };
 export type DocInitial = {
   customerId: number | null;
   date: string;
+  /** "HH:MM" when invoices carry a time (invoice_use_time). */
+  time?: string;
   closingDate: string;
   number: string;
   referenceNumber: string;
@@ -37,7 +39,7 @@ export type DocInitial = {
 
 let keySeq = 0;
 const newKey = () => `l${Date.now()}-${keySeq++}`;
-export const emptyLine = (): LineState => ({ key: newKey(), itemId: null, name: "", description: "", unitName: "", quantity: "1", price: "", discountType: "FIXED", discount: "", taxes: [] });
+export const emptyLine = (): LineState => ({ key: newKey(), itemId: null, name: "", description: "", unitName: "", quantity: "1", price: "", discountType: "FIXED", discount: "", taxes: [], customFields: {} });
 
 const LABELS = {
   invoice: { date: "Invoice date", closing: "Due date", number: "Invoice number", save: "Save invoice", notesType: "Invoice" },
@@ -82,9 +84,23 @@ function TemplateThumb({ variant }: { variant: string }) {
   );
 }
 
+function LineFieldInput({ field, value, onChange, label }: { field: CustomFieldInputDef; value: string; onChange: (v: string) => void; label: string }) {
+  const cls = cn(inputClass, "py-1 text-xs");
+  if (field.type === "Dropdown")
+    return (
+      <select aria-label={label} className={cls} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">—</option>
+        {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    );
+  if (field.type === "Switch") return <input type="checkbox" aria-label={label} className="h-4 w-4 accent-brand-700" checked={value === "1"} onChange={(e) => onChange(e.target.checked ? "1" : "")} />;
+  const type = field.type === "Date" ? "date" : field.type === "Time" ? "time" : field.type === "DateTime" ? "datetime-local" : "text";
+  return <input aria-label={label} type={type} inputMode={field.type === "Number" ? "decimal" : undefined} className={cls} value={value} placeholder={field.placeholder ?? undefined} maxLength={255} onChange={(e) => onChange(e.target.value)} />;
+}
+
 function LineErrors({ i }: { i: number }) {
   const { state } = useFormContext();
-  const errs = ["name", "quantity", "price", "discount", "taxes"].map((f) => state?.fieldErrors?.[`lines.${i}.${f}`]?.[0]).filter(Boolean);
+  const errs = ["name", "quantity", "price", "discount", "taxes", "customFields"].map((f) => state?.fieldErrors?.[`lines.${i}.${f}`]?.[0]).filter(Boolean);
   if (!errs.length) return null;
   return <p className="mt-1 text-xs font-medium text-red-600">{errs.join(" ")}</p>;
 }
@@ -118,6 +134,9 @@ function DocumentFormBody({
   isNew,
   cancelHref,
   allowSend,
+  lineFields = [],
+  useTime = false,
+  allowRecurring = false,
 }: {
   kind: "invoice" | "estimate" | "recurring";
   action: FormAction;
@@ -137,9 +156,13 @@ function DocumentFormBody({
   isNew: boolean;
   cancelHref: string;
   allowSend: boolean;
+  /** Item custom fields with placement "document", entered per line (spec §5.4 items table). */
+  lineFields?: CustomFieldInputDef[];
+  useTime?: boolean;
+  /** Shows the "Make recurring" switch on new invoices (spec §5.4 header actions). */
+  allowRecurring?: boolean;
 }) {
   void _action;
-  const L = LABELS[kind];
   const { state: formState } = useFormContext();
   const err = (k: string) => formState?.fieldErrors?.[k]?.[0];
   const [customers, setCustomers] = useState(initialCustomers);
@@ -160,6 +183,14 @@ function DocumentFormBody({
   const [templateName, setTemplateName] = useState(initial.templateName);
   const [rec, setRec] = useState<RecurringState | undefined>(initial.recurring);
   const [preview, setPreview] = useState<{ dates: string[]; error?: string } | null>(null);
+  const [time, setTime] = useState(initial.time ?? "");
+  const [makeRecurring, setMakeRecurring] = useState(false);
+  const effKind = kind === "invoice" && makeRecurring ? "recurring" : kind;
+  const L = LABELS[effKind];
+  const toggleRecurring = (on: boolean) => {
+    setMakeRecurring(on);
+    if (on && !rec) setRec({ startsAt: date, frequency: "0 0 1 * *", limitBy: "NONE", limitCount: "", limitDate: "", status: "ACTIVE", sendAutomatically: false, notifyCreator: false });
+  };
   const [, start] = useTransition();
 
   const customer = customers.find((c) => c.id === customerId) ?? null;
@@ -217,7 +248,7 @@ function DocumentFormBody({
     const it = items.find((i) => String(i.id) === itemId);
     if (!it) return updateLine(key, { itemId: null });
     const price = foreign && rate > 0 ? R(it.price / rate) : it.price;
-    updateLine(key, { itemId: it.id, name: it.name, description: it.description ?? "", unitName: it.unitName ?? "", price: minorToInput(price), taxes: company.taxPerItem ? it.taxIds.filter((t) => taxById.has(t)) : [] });
+    updateLine(key, { itemId: it.id, name: it.name, description: it.description ?? "", unitName: it.unitName ?? "", price: minorToInput(price), taxes: company.taxPerItem ? it.taxIds.filter((t) => taxById.has(t)) : [], customFields: { ...(it.fields ?? {}) } });
   };
   const move = (i: number, d: -1 | 1) =>
     setLines((ls) => {
@@ -231,6 +262,7 @@ function DocumentFormBody({
   const payload = JSON.stringify({
     customerId,
     date,
+    time: useTime && effKind === "invoice" ? time || null : null,
     closingDate: closingDate || null,
     number,
     referenceNumber: referenceNumber || null,
@@ -251,8 +283,10 @@ function DocumentFormBody({
       discountType: l.discountType,
       discount: l.discount || 0,
       taxes: company.taxPerItem ? l.taxes : [],
+      customFields: lineFields.length ? l.customFields : null,
     })),
-    recurring: rec,
+    recurring: effKind === "recurring" ? rec : undefined,
+    makeRecurring: kind === "invoice" && effKind === "recurring",
   });
 
   const summary = taxSummary(result, company.taxPerItem);
@@ -261,6 +295,14 @@ function DocumentFormBody({
   return (
     <>
       <input type="hidden" name="payload" value={payload} />
+      {allowRecurring && kind === "invoice" && isNew ? (
+        <div className="flex items-center justify-end">
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-ink-2">
+            <input type="checkbox" role="switch" aria-checked={makeRecurring} checked={makeRecurring} onChange={(e) => toggleRecurring(e.target.checked)} className="h-4 w-4 accent-brand-700" />
+            Make recurring
+          </label>
+        </div>
+      ) : null}
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader
@@ -319,7 +361,7 @@ function DocumentFormBody({
         <Card className="lg:col-span-2">
           <CardHeader title="Details" />
           <CardBody className="grid gap-4 sm:grid-cols-2">
-            {kind === "recurring" && rec ? (
+            {effKind === "recurring" && rec ? (
               <>
                 <div>
                   <Label htmlFor="rec-start" required>Starts at</Label>
@@ -413,6 +455,13 @@ function DocumentFormBody({
                   <input id="doc-date" type="date" className={inputClass} value={date} onChange={(e) => onDateChange(e.target.value)} aria-invalid={err("date") ? true : undefined} />
                   <FieldError name="date" />
                 </div>
+                {useTime && effKind === "invoice" ? (
+                  <div>
+                    <Label htmlFor="doc-time">Invoice time</Label>
+                    <input id="doc-time" type="time" className={inputClass} value={time} onChange={(e) => setTime(e.target.value)} />
+                    <FieldError name="time" />
+                  </div>
+                ) : null}
                 <div>
                   <Label htmlFor="doc-closing">{L.closing}</Label>
                   <input
@@ -469,7 +518,7 @@ function DocumentFormBody({
                 size="sm"
                 onSuccess={(s) => {
                   const it = s.data?.item as { id: number; name: string; description: string | null; price: number; unit: { name: string } | null; taxes: { taxTypeId: number }[] } | undefined;
-                  if (it) setItems((xs) => [...xs, { id: it.id, name: it.name, description: it.description, price: it.price, unitName: it.unit?.name ?? null, taxIds: it.taxes.map((t) => t.taxTypeId) }]);
+                  if (it) setItems((xs) => [...xs, { id: it.id, name: it.name, description: it.description, price: it.price, unitName: it.unit?.name ?? null, taxIds: it.taxes.map((t) => t.taxTypeId), fields: {} }]);
                 }}
               >
                 <Field name="name" label="Name" required autoFocus />
@@ -503,6 +552,16 @@ function DocumentFormBody({
                       <input aria-label={`Name for line ${i + 1}`} placeholder="Item name" className={inputClass} value={l.name} maxLength={255} onChange={(e) => updateLine(l.key, { name: e.target.value })} aria-invalid={err(`lines.${i}.name`) ? true : undefined} />
                     </div>
                     <textarea aria-label={`Description for line ${i + 1}`} placeholder="Description (optional)" rows={1} className={cn(inputClass, "mt-2 text-xs")} value={l.description} onChange={(e) => updateLine(l.key, { description: e.target.value })} />
+                    {lineFields.length ? (
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {lineFields.map((f) => (
+                          <div key={f.id} className="text-xs text-muted">
+                            <span className="mb-0.5 block">{f.label}</span>
+                            <LineFieldInput field={f} label={`${f.label} for line ${i + 1}`} value={l.customFields[String(f.id)] ?? ""} onChange={(v) => updateLine(l.key, { customFields: { ...l.customFields, [String(f.id)]: v } })} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                     {company.taxPerItem ? (
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         {l.taxes.map((tid) => {
@@ -679,7 +738,7 @@ function DocumentFormBody({
 
       <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-line bg-white px-4 py-3 sm:mx-0 sm:rounded-md sm:border">
         <ButtonLink href={cancelHref} variant="secondary">Cancel</ButtonLink>
-        {allowSend ? (
+        {allowSend && effKind !== "recurring" ? (
           <SubmitButton name="intent" value="send" variant="secondary" pendingLabel="Saving…">
             Save and send
           </SubmitButton>

@@ -1,9 +1,9 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { CompanyContext } from "@/lib/auth/context";
 import type { FieldErrors } from "@/lib/action";
 import { randomToken } from "@/lib/auth/tokens";
-import { addDaysIso, isoDate, parseIsoDate, todayIn } from "@/lib/dates";
+import { addDaysIso, isoDate, parseIsoDate, todayIn, zonedParts } from "@/lib/dates";
 import { toBase } from "@/lib/money";
 import { copyCustomFieldAnswers, saveCustomFieldAnswers, validateCustomFieldAnswers } from "@/lib/custom-fields";
 import { invoiceAllowEdit, mapTemplate, recomputeBalance } from "@/domain/status";
@@ -79,6 +79,7 @@ export async function saveInvoice(ctx: CompanyContext, id: number | null, input:
         invoiceNumber: number,
         referenceNumber: input.referenceNumber || null,
         invoiceDate: doc.date!,
+        invoiceTime: ctx.settings.invoice_use_time === "YES" ? (doc.time ?? existing?.invoiceTime ?? nowTimeIn(ctx.settings.time_zone)) : null,
         dueDate: doc.closingDate,
         templateName: template,
         notes: input.notes || null,
@@ -191,6 +192,7 @@ export async function cloneInvoice(ctx: CompanyContext, id: number): Promise<Res
         sequenceNumber: n.sequence,
         customerSequenceNumber: n.customerSequence,
         invoiceDate: parseIsoDate(today)!,
+        invoiceTime: ctx.settings.invoice_use_time === "YES" ? nowTimeIn(ctx.settings.time_zone) : null,
         dueDate: dueFor(ctx, today),
         status: "DRAFT",
         paidStatus: "UNPAID",
@@ -303,6 +305,7 @@ export async function createCreditNote(ctx: CompanyContext, invoiceId: number, r
           customerSequenceNumber: n.customerSequence,
           referenceNumber: inv.invoiceNumber,
           invoiceDate: parseIsoDate(todayIn(ctx.settings.time_zone))!,
+          invoiceTime: ctx.settings.invoice_use_time === "YES" ? nowTimeIn(ctx.settings.time_zone) : null,
           dueDate: null,
           currency: inv.currency,
           exchangeRate: rate,
@@ -354,6 +357,7 @@ export async function createCreditNote(ctx: CompanyContext, invoiceId: number, r
             baseTotal: -toBase(cl.total, rate),
             exchangeRate: rate,
             sourceLineId: orig.id,
+            customFields: orig.customFields ?? Prisma.DbNull,
           },
         });
         for (const [j, t] of cl.taxes.entries()) {
@@ -389,4 +393,10 @@ const CREDIT_ERRORS: Record<string, string> = {
 
 export function isoOrNull(d: Date | null | undefined) {
   return d ? isoDate(d) : null;
+}
+
+/** Current wall-clock time "HH:MM" in a zone (invoice_use_time default, spec §4.4). */
+export function nowTimeIn(timeZone: string, now = new Date()) {
+  const p = zonedParts(now, timeZone);
+  return `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
 }

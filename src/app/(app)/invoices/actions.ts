@@ -7,6 +7,7 @@ import { failure, guard, success, type ActionState } from "@/lib/action";
 import { requireAbility } from "@/lib/auth/context";
 import { setFlash } from "@/lib/flash";
 import { documentSchema } from "@/server/documents";
+import { recurringFieldsSchema, saveRecurring } from "@/server/recurring";
 import { cloneInvoice, convertInvoiceToEstimate, createCreditNote, deleteInvoices, markInvoiceCompleted, markInvoiceSent, saveInvoice } from "@/server/invoices";
 import { saveDefaultTemplate } from "@/server/user-settings";
 
@@ -20,6 +21,14 @@ function parsePayload(formData: FormData) {
 
 export async function saveInvoiceAction(id: number | null, _prev: ActionState, formData: FormData): Promise<ActionState> {
   return guard(async () => {
+    let raw: Record<string, unknown> = {};
+    try {
+      raw = JSON.parse(String(formData.get("payload") ?? "{}"));
+    } catch {
+      /* schema reports */
+    }
+    // "Make recurring" on a new invoice turns the form into a recurring invoice (spec §5.4).
+    if (!id && raw.makeRecurring === true) return saveAsRecurring(raw, formData);
     const ctx = await requireAbility(id ? "edit-invoice" : "create-invoice");
     const parsed = parsePayload(formData);
     if (!parsed.success) {
@@ -116,4 +125,20 @@ export async function createCreditNoteAction(id: number, _prev: ActionState, for
     await setFlash("Credit note created.");
     redirect(`/invoices/${r.id}`);
   });
+}
+
+async function saveAsRecurring(raw: Record<string, unknown>, formData: FormData): Promise<ActionState> {
+  const ctx = await requireAbility("create-recurring-invoice");
+  const doc = documentSchema.safeParse(raw);
+  const rec = recurringFieldsSchema.safeParse(raw.recurring);
+  if (!doc.success || !rec.success) {
+    const fe: Record<string, string[]> = {};
+    for (const i of [...(doc.success ? [] : doc.error.issues), ...(rec.success ? [] : rec.error.issues)]) fe[i.path.join(".") || "lines"] = [i.message];
+    return failure("Please correct the highlighted fields.", fe);
+  }
+  const res = await saveRecurring(ctx, null, doc.data, rec.data, formData);
+  if (!res.ok) return failure(res.error, res.fieldErrors);
+  revalidatePath("/recurring-invoices");
+  await setFlash("Recurring invoice created.");
+  redirect(`/recurring-invoices/${res.id}`);
 }

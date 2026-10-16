@@ -48,11 +48,13 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
         taxTypes={data.taxTypes}
         notes={data.notes}
         company={company}
-        initial={storedDocumentInitial(inv, { date: inv.invoiceDate, closingDate: inv.dueDate, number: inv.invoiceNumber, referenceNumber: inv.referenceNumber })}
+        initial={storedDocumentInitial(inv, { date: inv.invoiceDate, time: inv.invoiceTime, closingDate: inv.dueDate, number: inv.invoiceNumber, referenceNumber: inv.referenceNumber })}
         rateAction={lookupRateAction}
         customerAction={ctx.can("create-customer") ? quickCustomerAction : undefined}
         itemAction={ctx.can("create-item") ? saveItemAction.bind(null, null, true) : undefined}
         customFields={data.customFields}
+        lineFields={data.lineFields}
+        useTime={data.useTime}
         customValues={await loadCustomFieldAnswers("Invoice", inv.id)}
         isNew={false}
         cancelHref={`/invoices/${inv.id}`}

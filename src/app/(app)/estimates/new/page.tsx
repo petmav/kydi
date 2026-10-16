@@ -34,6 +34,7 @@ export default async function NewEstimatePage({ searchParams }: { searchParams: 
         customerAction={ctx.can("create-customer") ? quickCustomerAction : undefined}
         itemAction={ctx.can("create-item") ? saveItemAction.bind(null, null, true) : undefined}
         customFields={data.customFields}
+        lineFields={data.lineFields}
         isNew
         cancelHref="/estimates"
         allowSend={ctx.can("send-estimate")}

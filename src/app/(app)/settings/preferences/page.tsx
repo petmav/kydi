@@ -53,6 +53,12 @@ export default async function PreferencesPage() {
               defaultChecked={s.discount_per_item === "YES"}
             />
             <CheckboxField
+              name="invoice_use_time"
+              label="Invoice use time"
+              hint="Invoice dates carry a time of day and print with it."
+              defaultChecked={s.invoice_use_time === "YES"}
+            />
+            <CheckboxField
               name="automatically_expire_public_links"
               label="Automatically expire public links"
               hint="Links in emailed documents stop working after the number of days below."

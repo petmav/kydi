@@ -7,7 +7,7 @@ import { estimateTransitions, mapTemplate } from "@/domain/status";
 import { renderNumber } from "@/domain/numbering";
 import { buildDocument, copyLines, logExchangeRate, totalsData, writeLines, type DocumentInput } from "./documents";
 import { nextNumber } from "./numbers";
-import { DomainError, recalcInvoice, type Result } from "./invoices";
+import { DomainError, recalcInvoice, type Result, nowTimeIn } from "./invoices";
 
 export const ESTIMATE_TEMPLATES = ["estimate1", "estimate2", "estimate3"];
 
@@ -133,6 +133,7 @@ export async function convertEstimateToInvoice(ctx: CompanyContext, id: number):
         customerSequenceNumber: n.customerSequence,
         referenceNumber: renderNumber(ctx.settings.invoice_number_format, { sequence: n.sequence, customerSequence: n.customerSequence }),
         invoiceDate: parseIsoDate(today)!,
+        invoiceTime: ctx.settings.invoice_use_time === "YES" ? nowTimeIn(ctx.settings.time_zone) : null,
         dueDate: auto ? parseIsoDate(addDaysIso(today, Number(ctx.settings.invoice_due_date_days) || 7)) : null,
         currency: src.currency,
         exchangeRate: src.exchangeRate,
