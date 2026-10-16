@@ -5,7 +5,7 @@ import { countryName } from "@/lib/intl-data";
 import { formatMoney } from "@/lib/money";
 import { formatDate, isoDate } from "@/lib/dates";
 import { companyValues, customerValues, fillPlaceholders } from "@/lib/placeholders";
-import { customFieldPlaceholders, displayAnswer, getCustomFields, loadCustomFieldAnswers } from "@/lib/custom-fields";
+import { customFieldPlaceholders, displayAnswer, getCustomFields, lineFieldsFrom, loadCustomFieldAnswers } from "@/lib/custom-fields";
 import { extensionOf, readStoredFile } from "@/lib/storage";
 import { taxSummary } from "@/domain/totals";
 import { DocumentPdf, type PdfDoc } from "@/pdf/document-pdf";
@@ -23,6 +23,16 @@ export async function companyAssets(companyId: number) {
 }
 
 const fmt = (settings: CompanySettings, currency: string) => (v: number | bigint) => pdfText(formatMoney(Number(v), currency, settings.locale));
+/** Item custom fields with placement "document" print as extra line columns when any line has an answer (spec §7.2). */
+async function lineColumns(companyId: number, lines: { customFields: unknown }[]) {
+  const answers = (l: { customFields: unknown }) => (l.customFields && typeof l.customFields === "object" ? (l.customFields as Record<string, string>) : {});
+  const fields = lineFieldsFrom(await getCustomFields(companyId, "Item")).filter((f) => lines.some((l) => answers(l)[String(f.id)]));
+  return {
+    extraColumns: fields.map((f) => pdfText(f.label)),
+    extraFor: (l: { customFields: unknown }) => fields.map((f) => pdfText(displayAnswer(f, answers(l)[String(f.id)] ?? null))),
+  };
+}
+
 const qtyText = (q: number) => (Number.isInteger(q) ? String(q) : q.toFixed(2));
 
 async function placeholderValues(company: Company, customer: Record<string, unknown> & { id: number; name: string }, docValues: Record<string, string>, model: "Invoice" | "Estimate" | "Payment", modelId: number) {
@@ -54,6 +64,7 @@ export async function invoicePdfData(companyId: number, invoiceId: number): Prom
     inv.id,
   );
   const docFields = (await getCustomFields(companyId, "Invoice")).filter((f) => f.placement === "document");
+  const cols = await lineColumns(companyId, inv.lines);
   const answers = await loadCustomFieldAnswers("Invoice", inv.id);
   const paid = inv.allocations.reduce((s, a) => s + Number(a.amount), 0);
   const credited = Math.abs(inv.creditNotes.reduce((s, c) => s + Number(c.total), 0));
@@ -85,13 +96,13 @@ export async function invoicePdfData(companyId: number, invoiceId: number): Prom
     shipBlock: inv.customer.shippingStreet1 || inv.customer.shippingName ? htmlToBlocks(fillPlaceholders(settings.invoice_shipping_address_format, values)) : [],
     details: [
       { label: isCredit ? "Credit note number" : "Invoice number", value: inv.invoiceNumber },
-      { label: isCredit ? "Credit note date" : "Invoice date", value: df(inv.invoiceDate) },
+      { label: isCredit ? "Credit note date" : "Invoice date", value: `${df(inv.invoiceDate)}${inv.invoiceTime && settings.invoice_use_time === "YES" ? ` ${inv.invoiceTime}` : ""}` },
       ...(inv.dueDate ? [{ label: "Due date", value: df(inv.dueDate) }] : []),
       ...(inv.referenceNumber && !isCredit ? [{ label: "Reference", value: inv.referenceNumber }] : []),
       ...docFields.filter((f) => answers[f.id]).map((f) => ({ label: f.label, value: pdfText(displayAnswer(f, answers[f.id])) })),
     ].map((r) => ({ label: pdfText(r.label), value: pdfText(r.value) })),
     banner,
-    extraColumns: [],
+    extraColumns: cols.extraColumns,
     showDiscount: inv.discountPerItem,
     showTax: inv.taxPerItem,
     lines: inv.lines.map((l) => ({
@@ -102,7 +113,7 @@ export async function invoicePdfData(companyId: number, invoiceId: number): Prom
       discount: inv.discountPerItem ? (l.discountType === "PERCENTAGE" ? `${l.discount}%` : money(l.discountVal)) : null,
       tax: inv.taxPerItem ? money(l.tax) : null,
       amount: money(l.total),
-      extra: [],
+      extra: cols.extraFor(l),
     })),
     totals,
     notes: htmlToBlocks(fillPlaceholders(inv.notes ?? "", values)),
@@ -127,6 +138,7 @@ export async function estimatePdfData(companyId: number, estimateId: number): Pr
     est.id,
   );
   const docFields = (await getCustomFields(companyId, "Estimate")).filter((f) => f.placement === "document");
+  const cols = await lineColumns(companyId, est.lines);
   const answers = await loadCustomFieldAnswers("Estimate", est.id);
   const summary = taxSummary({ lines: est.lines.map((l) => ({ taxes: l.taxes.map((t) => ({ ...t, amount: Number(t.amount), fixedAmount: null, baseAmount: 0 })) })), taxes: est.taxes.map((t) => ({ ...t, amount: Number(t.amount), fixedAmount: null, baseAmount: 0 })) }, est.taxPerItem);
   const totals: PdfDoc["totals"] = [{ label: "Subtotal", value: money(est.subTotal) }];
@@ -149,7 +161,7 @@ export async function estimatePdfData(companyId: number, estimateId: number): Pr
       ...docFields.filter((f) => answers[f.id]).map((f) => ({ label: f.label, value: displayAnswer(f, answers[f.id]) })),
     ].map((r) => ({ label: pdfText(r.label), value: pdfText(r.value) })),
     banner: null,
-    extraColumns: [],
+    extraColumns: cols.extraColumns,
     showDiscount: est.discountPerItem,
     showTax: est.taxPerItem,
     lines: est.lines.map((l) => ({
@@ -160,7 +172,7 @@ export async function estimatePdfData(companyId: number, estimateId: number): Pr
       discount: est.discountPerItem ? (l.discountType === "PERCENTAGE" ? `${l.discount}%` : money(l.discountVal)) : null,
       tax: est.taxPerItem ? money(l.tax) : null,
       amount: money(l.total),
-      extra: [],
+      extra: cols.extraFor(l),
     })),
     totals,
     notes: htmlToBlocks(fillPlaceholders(est.notes ?? "", values)),

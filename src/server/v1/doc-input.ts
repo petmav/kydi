@@ -14,7 +14,9 @@ export function docInput(b: Record<string, unknown>, dateKey: string, closingKey
   const taxIds = (arr: unknown) => ((arr as { tax_type_id: number }[] | undefined) ?? []).map((t) => Number(t.tax_type_id));
   return {
     customerId: Number(b.customer_id),
-    date: String(b[dateKey] ?? ""),
+    // Invoice dates may arrive as "YYYY-MM-DD HH:MM" when invoice_use_time is on (spec §9.1).
+    date: String(b[dateKey] ?? "").slice(0, 10),
+    time: typeof b[dateKey] === "string" && /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(b[dateKey] as string) ? (b[dateKey] as string).slice(11, 16) : null,
     closingDate: (b[closingKey] as string) ?? null,
     number: String(b[numberKey] ?? ""),
     referenceNumber: (b.reference_number as string) ?? null,
@@ -36,6 +38,7 @@ export function docInput(b: Record<string, unknown>, dateKey: string, closingKey
       discountType: String(l.discount_type ?? "fixed").toUpperCase() === "PERCENTAGE" ? "PERCENTAGE" : "FIXED",
       discount: Number(l.discount ?? 0),
       taxes: taxIds(l.taxes),
+      customFields: Array.isArray(l.custom_fields) ? Object.fromEntries((l.custom_fields as { id: number; value: string | number | boolean | null }[]).map((f) => [String(f.id), f.value])) : null,
     })),
   };
 }

@@ -6,7 +6,7 @@ import { DocumentForm } from "@/components/documents/document-form";
 import { getCompanyContext } from "@/lib/auth/context";
 import type { SearchParams } from "@/lib/list";
 import { documentFormData, newDocumentInitial } from "../../documents/form-data";
-import { lookupRateAction, quickCustomerAction, suggestNumberAction } from "../../documents/actions";
+import { lookupRateAction, previewScheduleAction, quickCustomerAction, suggestNumberAction } from "../../documents/actions";
 import { saveItemAction } from "../../items/actions";
 import { saveInvoiceAction } from "../actions";
 
@@ -35,6 +35,10 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
         customerAction={ctx.can("create-customer") ? quickCustomerAction : undefined}
         itemAction={ctx.can("create-item") ? saveItemAction.bind(null, null, true) : undefined}
         customFields={data.customFields}
+        lineFields={data.lineFields}
+        useTime={data.useTime}
+        allowRecurring={ctx.can("create-recurring-invoice")}
+        previewAction={previewScheduleAction}
         isNew
         cancelHref="/invoices"
         allowSend={ctx.can("send-invoice")}

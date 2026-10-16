@@ -54,6 +54,7 @@ export default async function EditRecurringPage({ params }: { params: Promise<{ 
         customerAction={ctx.can("create-customer") ? quickCustomerAction : undefined}
         itemAction={ctx.can("create-item") ? saveItemAction.bind(null, null, true) : undefined}
         customFields={data.customFields}
+        lineFields={data.lineFields}
         customValues={await loadCustomFieldAnswers("RecurringInvoice" as CfModel, r.id)}
         isNew={false}
         cancelHref={`/recurring-invoices/${r.id}`}

@@ -37,6 +37,7 @@ export default async function EditEstimatePage({ params }: { params: Promise<{ i
         customerAction={ctx.can("create-customer") ? quickCustomerAction : undefined}
         itemAction={ctx.can("create-item") ? saveItemAction.bind(null, null, true) : undefined}
         customFields={data.customFields}
+        lineFields={data.lineFields}
         customValues={await loadCustomFieldAnswers("Estimate", est.id)}
         isNew={false}
         cancelHref={`/estimates/${est.id}`}

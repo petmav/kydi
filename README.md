@@ -21,11 +21,12 @@ previews on [Zenith Hosting](https://zenith.hosting).
   balance and available credit, activity and outstanding statements (HTML + PDF), apply-credit screen.
 - **Items** with units and default taxes; snapshots on documents.
 - **Invoices and estimates:** shared document editor (per-item or document taxes and discounts, tax-inclusive
-  prices, compound taxes, multi-currency with exchange rates, notes, template picker, custom fields) with
-  server-authoritative totals; status machines (draft → sent → viewed → completed; unpaid / partially paid /
+  prices, compound taxes, multi-currency with exchange rates, notes, template picker, custom fields, item custom
+  fields entered per line) with server-authoritative totals; a "Make recurring" switch on new invoices turns the
+  form into a recurring invoice; optional invoice time of day (Preferences > Invoice use time); status machines (draft → sent → viewed → completed; unpaid / partially paid /
   paid / overdue), mark as sent, clone, convert estimate ↔ invoice, accept/reject, partial credit notes.
 - **PDF:** three invoice and three estimate layouts plus a payment receipt, rendered with `@react-pdf/renderer`
-  (no headless browser). Permanent public PDF links and expiring emailed viewer links that mark documents viewed.
+  (no headless browser). Item custom fields with "Show on document" print as extra line columns. Permanent public PDF links and expiring emailed viewer links that mark documents viewed.
 - **Email:** send dialog with preview, placeholders, optional PDF attachment, email log per document; SMTP via
   `nodemailer`, or the message is printed to stdout when SMTP is not configured.
 - **Payments:** allocations across invoices with row locking, unapplied customer credit, receipts.
@@ -37,11 +38,29 @@ previews on [Zenith Hosting](https://zenith.hosting).
 - **Dashboard:** receivables split (overdue / due soon / later), counters, cash-flow chart, recent lists.
 - **Reports:** sales by customer, sales by item, expenses, profit & loss (cash basis), tax summary — HTML preview
   and PDF export.
+- **Customers:** cash-flow figures per customer and statement email are available through the API
+  (`customers/{id}/stats`, `customers/{id}/statement/send`); the customer screen does not show them yet.
 - **Customer portal** at `/portal/<company-slug>`: separate login and sessions, invoices, estimates (accept or
   reject), payments, profile.
 - **REST API** under `/api/v1` (see below).
 - Out of scope for v1 and shown as labelled pages: purchasing (suppliers, bills), exchange-rate providers,
   module marketplace, backups, file disks, self-updater.
+
+## Known gaps
+
+Not built yet (planned, in this order):
+
+- Per-company mail drivers (Mailgun, SES, Postmark, Sendmail) with test send; all mail uses the installation
+  SMTP settings today.
+- Exchange-rate providers and live rate lookup; the last rate used per currency is suggested instead.
+- Rich-text toolbar for notes and email templates (HTML is typed into a plain text area) and an allow-list HTML
+  sanitiser (the current one strips scripts, event handlers and `javascript:` links only).
+- Ownership transfer screen, pending invitations on a "No company" screen, profile photos, and administration
+  screens beyond the read-only overview. Ownership transfer is available through the API.
+- Customer list split view and per-customer chart on the customer screen.
+- Unicode PDF font: PDFs use the built-in Helvetica, so text outside Latin-1 does not render.
+- Purchasing module (suppliers, bills, supplier payments, credits, refunds, recurring costs, purchases report).
+- End-to-end smoke test suite.
 
 ## Tech stack
 

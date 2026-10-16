@@ -348,6 +348,8 @@ model Invoice {
   customerSequenceNumber Int
   referenceNumber        String?
   invoiceDate            DateTime      @db.Date
+  /// "HH:MM" when the company setting invoice_use_time is YES (spec §3.2).
+  invoiceTime            String?
   dueDate                DateTime?     @db.Date
   currency               String
   exchangeRate           Float         @default(1)
@@ -533,6 +535,8 @@ model LineItem {
   baseTotal          BigInt            @default(0)
   exchangeRate       Float             @default(1)
   sourceLineId       Int?
+  /// Answers of Item custom fields printed as line columns: { "<customFieldId>": "value" } (spec §3.14).
+  customFields       Json?
   invoice            Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   estimate           Estimate?         @relation(fields: [estimateId], references: [id], onDelete: Cascade)
   recurringInvoice   RecurringInvoice? @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)

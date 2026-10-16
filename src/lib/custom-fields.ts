@@ -33,7 +33,7 @@ export async function getCustomFields(companyId: number, modelType: CfModel): Pr
   return rows.map((r) => ({ ...r, validation: (r.validation as CfValidation | null) ?? null }));
 }
 
-function checkValue(f: CustomFieldDef, raw: string, today: string): string | null {
+export function checkValue(f: CustomFieldDef, raw: string, today: string): string | null {
   const v = f.validation ?? {};
   switch (f.type as CfType) {
     case "Number": {
@@ -159,4 +159,28 @@ export async function customFieldPlaceholders(companyId: number, modelType: CfMo
   const fields = await getCustomFields(companyId, modelType);
   const answers = await loadCustomFieldAnswers(modelType, modelId);
   return Object.fromEntries(fields.map((f) => [f.slug, displayAnswer(f, answers[f.id])]));
+}
+
+/** Item fields with placement "document" are entered per line and printed as extra line columns (spec §3.6, §3.14). */
+export function lineFieldsFrom(fields: CustomFieldDef[]): CustomFieldDef[] {
+  return fields.filter((f) => f.placement === "document");
+}
+
+/**
+ * Normalises the answers of one document line: keeps only line fields, trims text, validates by type.
+ * Blank answers are dropped (line answers are optional even when the item field is required).
+ */
+export function normalizeLineAnswers(fields: CustomFieldDef[], raw: Record<string, unknown> | null | undefined, today: string): { values: Record<string, string> | null; error: string | null } {
+  const out: Record<string, string> = {};
+  let error: string | null = null;
+  for (const f of fields) {
+    const v = raw?.[String(f.id)];
+    if (v === undefined || v === null || v === "" || v === false) continue;
+    const text = (v === true ? "1" : String(v)).trim().slice(0, 1000);
+    if (!text) continue;
+    const problem = checkValue(f, text, today);
+    if (problem && !error) error = `${f.label}: ${problem}`;
+    out[String(f.id)] = text;
+  }
+  return { values: Object.keys(out).length ? out : null, error };
 }

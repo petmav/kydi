@@ -1,11 +1,13 @@
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { CompanyContext } from "@/lib/auth/context";
 import type { FieldErrors } from "@/lib/action";
 import { MAX_MONEY, toMinor, roundTo } from "@/lib/money";
 import { parseIsoDate } from "@/lib/dates";
 import { computeDocument, type DocumentResult, type TaxSpec } from "@/domain/totals";
+import { getCustomFields, lineFieldsFrom, normalizeLineAnswers } from "@/lib/custom-fields";
+import { todayIn } from "@/lib/dates";
 
 type Tx = Prisma.TransactionClient;
 
@@ -20,11 +22,14 @@ export const lineSchema = z.object({
   discountType: z.enum(["FIXED", "PERCENTAGE"]).default("FIXED"),
   discount: z.union([z.string(), z.number()]).optional().default(0),
   taxes: z.array(z.coerce.number().int().positive()).default([]),
+  customFields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).nullable().optional(),
 });
 
 export const documentSchema = z.object({
   customerId: z.coerce.number({ invalid_type_error: "Choose a customer." }).int().positive("Choose a customer."),
   date: z.string().optional().default(""),
+  /** "HH:MM" for invoices when invoice_use_time = YES. */
+  time: z.string().nullable().optional(),
   closingDate: z.string().nullable().optional(),
   number: z.string().trim().max(255).optional().default(""),
   referenceNumber: z.string().trim().max(255).nullable().optional(),
@@ -44,6 +49,7 @@ export type DocumentInput = z.infer<typeof documentSchema>;
 export type Built = {
   customer: { id: number; currency: string; name: string };
   date: Date | null;
+  time: string | null;
   closingDate: Date | null;
   exchangeRate: number;
   taxPerItem: boolean;
@@ -52,7 +58,7 @@ export type Built = {
   discountType: "FIXED" | "PERCENTAGE";
   discount: number;
   result: DocumentResult;
-  lines: (z.infer<typeof lineSchema> & { priceMinor: number; discountStored: number; specs: TaxSpec[] })[];
+  lines: (z.infer<typeof lineSchema> & { priceMinor: number; discountStored: number; specs: TaxSpec[]; cfValues: Record<string, string> | null })[];
   docSpecs: TaxSpec[];
 };
 
@@ -81,6 +87,11 @@ export async function buildDocument(
   const closingDate = input.closingDate ? parseIsoDate(input.closingDate) : null;
   if (input.closingDate && !closingDate) errors.closingDate = ["Enter a valid date."];
   if (date && closingDate && closingDate < date) errors.closingDate = ["Must be on or after the document date."];
+  const time = input.time && /^([01]\d|2[0-3]):[0-5]\d$/.test(input.time) ? input.time : null;
+  if (input.time && !time) errors.time = ["Enter a time as HH:MM."];
+
+  const lineFields = lineFieldsFrom(await getCustomFields(ctx.companyId, "Item"));
+  const today = todayIn(ctx.settings.time_zone);
 
   const foreign = customer.currency !== ctx.settings.currency;
   let exchangeRate = 1;
@@ -119,7 +130,9 @@ export async function buildDocument(
       }
     }
     const specs = modes.taxPerItem ? specsFor(l.taxes, `lines.${i}.taxes`) : [];
-    return { ...l, quantity: roundTo(l.quantity, 2), priceMinor, discountStored, specs };
+    const cf = normalizeLineAnswers(lineFields, l.customFields, today);
+    if (cf.error) errors[`lines.${i}.customFields`] = [cf.error];
+    return { ...l, quantity: roundTo(l.quantity, 2), priceMinor, discountStored, specs, cfValues: cf.values };
   });
 
   let discount = 0;
@@ -154,7 +167,7 @@ export async function buildDocument(
 
   return {
     ok: true,
-    doc: { customer, date, closingDate, exchangeRate, taxPerItem: modes.taxPerItem, discountPerItem: modes.discountPerItem, taxIncluded, discountType: input.discountType, discount, result, lines, docSpecs },
+    doc: { customer, date, time, closingDate, exchangeRate, taxPerItem: modes.taxPerItem, discountPerItem: modes.discountPerItem, taxIncluded, discountType: input.discountType, discount, result, lines, docSpecs },
   };
 }
 
@@ -187,6 +200,7 @@ export async function writeLines(tx: Tx, companyId: number, owner: Owner, doc: B
         baseTax: r.baseTax,
         baseTotal: r.baseTotal,
         exchangeRate: doc.exchangeRate,
+        customFields: l.cfValues ?? Prisma.DbNull,
       },
     });
     if (r.taxes.length) {
@@ -208,7 +222,7 @@ export async function copyLines(tx: Tx, companyId: number, from: Owner, to: Owne
   for (const l of lines) {
     const { id: _id, invoiceId: _a, estimateId: _b, recurringInvoiceId: _c, taxes, ...rest } = l;
     void _id; void _a; void _b; void _c;
-    const created = await tx.lineItem.create({ data: { ...rest, ...to, sourceLineId: null } });
+    const created = await tx.lineItem.create({ data: { ...rest, customFields: rest.customFields ?? Prisma.DbNull, ...to, sourceLineId: null } });
     if (taxes.length) {
       await tx.appliedTax.createMany({
         data: taxes.map(({ id: _t, invoiceId: _i, estimateId: _e, recurringInvoiceId: _r, lineItemId: _l, ...t }) => {
