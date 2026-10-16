@@ -20,7 +20,6 @@
     "@prisma/client": "6.19.3",
     "@react-pdf/renderer": "^4.9.0",
     "date-fns": "^4.4.0",
-    "geist": "^1.7.2",
     "lucide-react": "^1.58.0",
     "next": "15.5.28",
     "nodemailer": "^10.1.1",

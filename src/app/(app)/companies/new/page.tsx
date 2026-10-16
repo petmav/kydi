@@ -4,14 +4,16 @@ import { CompanyForm } from "@/components/company-form";
 import { Card, CardBody, PageHeader } from "@/components/ui/primitives";
 import { Forbidden } from "@/components/forbidden";
 import { getCompanyContext } from "@/lib/auth/context";
-import { countryOptions, currencyOptions, DATE_FORMATS, LOCALES, MONTHS, timezoneOptions } from "@/lib/intl-data";
+import { countryOptions, currencyOptions, DATE_FORMATS, LOCALES, timezoneOptions } from "@/lib/intl-data";
+import { FISCAL_YEARS } from "@/lib/settings";
 import { createCompanyAction } from "@/app/install/actions";
 
 export const metadata: Metadata = { title: "New company" };
 
 export default async function NewCompanyPage() {
   const ctx = await getCompanyContext();
-  if (!ctx.user.isSuperAdmin) return <Forbidden message="Only the instance owner can create companies." />;
+  const ownsAny = ctx.memberships.some((m) => m.company.ownerId === ctx.user.id);
+  if (!ownsAny && !ctx.isSuperAdmin) return <Forbidden message="Only company owners can create another company." />;
   return (
     <>
       <PageHeader
@@ -32,7 +34,7 @@ export default async function NewCompanyPage() {
             timezones={timezoneOptions()}
             dateFormats={[...DATE_FORMATS]}
             locales={[...LOCALES]}
-            months={MONTHS}
+            months={FISCAL_YEARS}
             submitLabel="Create company"
           />
         </CardBody>

@@ -38,7 +38,7 @@ export default async function ProfilePage() {
               {ctx.memberships.map((m) => (
                 <li key={m.id} className="flex items-center justify-between py-2">
                   <span className="font-medium">{m.company.name}</span>
-                  <span className="text-muted">{ctx.user.isSuperAdmin ? `${m.role.name} · Owner` : m.role.name}</span>
+                  <span className="text-muted">{m.company.ownerId === ctx.user.id ? "Owner" : m.role.title}</span>
                 </li>
               ))}
             </ul>

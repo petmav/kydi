@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export const inputClass =
-  "block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:bg-slate-50 disabled:text-slate-500 aria-[invalid=true]:border-red-400 aria-[invalid=true]:ring-red-500/20";
+  "block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-ink shadow-sm placeholder:text-slate-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 disabled:bg-slate-50 disabled:text-slate-500 aria-[invalid=true]:border-red-400 aria-[invalid=true]:ring-red-500/20";
 
 export function Card({ className, ...props }: ComponentProps<"div">) {
   return (
@@ -54,7 +54,7 @@ export function PageHeader({
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         {back ? <div className="mb-2 text-sm">{back}</div> : null}
-        <h1 className="truncate text-2xl font-semibold tracking-tight text-ink">{title}</h1>
+        <h1 className="truncate text-xl font-semibold text-ink">{title}</h1>
         {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
@@ -68,7 +68,7 @@ const badgeTones = {
   green: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   amber: "bg-amber-50 text-amber-800 ring-amber-200",
   red: "bg-red-50 text-red-700 ring-red-200",
-  violet: "bg-violet-50 text-violet-700 ring-violet-200",
+  violet: "bg-sky-50 text-sky-800 ring-sky-200",
 } as const;
 export type BadgeTone = keyof typeof badgeTones;
 
@@ -99,7 +99,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      {icon ? <div className="mb-3 rounded-full bg-brand-50 p-3 text-brand-600">{icon}</div> : null}
+      {icon ? <div className="mb-3 rounded-md bg-subtle p-3 text-muted">{icon}</div> : null}
       <h3 className="text-base font-semibold text-ink">{title}</h3>
       {description ? <p className="mt-1 max-w-sm text-sm text-muted">{description}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
@@ -109,7 +109,7 @@ export function EmptyState({
 
 export function Table({ className, ...props }: ComponentProps<"table">) {
   return (
-    <div className="overflow-x-auto">
+    <div className="max-h-[70vh] overflow-auto">
       <table className={cn("min-w-full divide-y divide-line text-sm", className)} {...props} />
     </div>
   );
@@ -118,13 +118,13 @@ export function Th({ className, ...props }: ComponentProps<"th">) {
   return (
     <th
       scope="col"
-      className={cn("whitespace-nowrap px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted", className)}
+      className={cn("sticky top-0 z-10 whitespace-nowrap border-b border-line bg-subtle px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted", className)}
       {...props}
     />
   );
 }
 export function Td({ className, ...props }: ComponentProps<"td">) {
-  return <td className={cn("whitespace-nowrap px-4 py-3 text-ink", className)} {...props} />;
+  return <td className={cn("whitespace-nowrap px-4 py-2.5 text-ink", className)} {...props} />;
 }
 
 export function Spinner({ className }: { className?: string }) {
@@ -169,7 +169,7 @@ export function Alert({
     success: "border-emerald-200 bg-emerald-50 text-emerald-900",
   };
   return (
-    <div role={tone === "error" ? "alert" : "status"} className={cn("rounded-lg border px-4 py-3 text-sm", tones[tone])}>
+    <div role={tone === "error" ? "alert" : "status"} className={cn("rounded-md border px-4 py-3 text-sm", tones[tone])}>
       {title ? <p className="font-semibold">{title}</p> : null}
       {children ? <div className={title ? "mt-1" : ""}>{children}</div> : null}
     </div>

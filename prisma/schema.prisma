@@ -1,4 +1,6 @@
-// Halyard data model. Money is stored as integers in minor units (e.g. cents).
+// Halyard data model.
+// Money: signed 64-bit integers of minor units (major x 100). Quantities, percents and
+// exchange rates are doubles rounded by the domain layer (2 / 2 / 6 decimals).
 
 generator client {
   provider      = "prisma-client-js"
@@ -10,38 +12,46 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  SUPER_ADMIN
+  USER
+}
+
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            Int       @id @default(autoincrement())
   name          String
+  email         String    @unique
+  phone         String?
   passwordHash  String
-  isSuperAdmin  Boolean   @default(false)
-  locale        String    @default("en")
-  lastCompanyId String?
+  role          UserRole  @default(USER)
+  settings      Json      @default("{}")
+  lastCompanyId Int?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   memberships   CompanyUser[]
   sessions      Session[]
   resetTokens   PasswordResetToken[]
+  ownedCompanies Company[] @relation("CompanyOwner")
+  apiTokens     ApiToken[]
 }
 
 model Session {
-  id         String   @id @default(cuid())
-  tokenHash  String   @unique
-  userId     String
-  expiresAt  DateTime
-  userAgent  String?
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  userId    Int
+  expiresAt DateTime
+  userAgent String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
 model PasswordResetToken {
-  id        String    @id @default(cuid())
+  id        Int       @id @default(autoincrement())
   tokenHash String    @unique
-  userId    String
+  userId    Int
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime  @default(now())
@@ -50,32 +60,66 @@ model PasswordResetToken {
   @@index([userId])
 }
 
-model Company {
-  id           String   @id @default(cuid())
-  name         String
-  slug         String   @unique
-  email        String?
-  phone        String?
-  website      String?
-  taxId        String?
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  state        String?
-  postalCode   String?
-  country      String?
-  logoPath     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+model ApiToken {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  name       String
+  tokenHash  String    @unique
+  prefix     String
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  members      CompanyUser[]
-  roles        Role[]
-  settings     CompanySetting[]
+  @@index([userId])
+}
+
+model Company {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  slug       String   @unique
+  uniqueHash String   @unique
+  ownerId    Int
+  vatId      String?
+  taxId      String?
+  logoPath   String?
+  addrName   String?
+  street1    String?
+  street2    String?
+  city       String?
+  state      String?
+  country    String?
+  zip        String?
+  phone      String?
+  fax        String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  owner      User     @relation("CompanyOwner", fields: [ownerId], references: [id])
+  members    CompanyUser[]
+  roles      Role[]
+  settings   CompanySetting[]
+  invitations Invitation[]
+  customers  Customer[]
+  units      Unit[]
+  items      Item[]
+  taxTypes   TaxType[]
+  invoices   Invoice[]
+  estimates  Estimate[]
+  recurringInvoices RecurringInvoice[]
+  payments   Payment[]
+  paymentMethods PaymentMethod[]
+  expenses   Expense[]
+  expenseCategories ExpenseCategory[]
+  customFields CustomField[]
+  notes      Note[]
+  exchangeRateLogs ExchangeRateLog[]
+  emailLogs  EmailLog[]
 }
 
 model CompanySetting {
-  id        String  @id @default(cuid())
-  companyId String
+  id        Int     @id @default(autoincrement())
+  companyId Int
   key       String
   value     String
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -84,24 +128,26 @@ model CompanySetting {
 }
 
 model Role {
-  id        String   @id @default(cuid())
-  companyId String
+  id        Int      @id @default(autoincrement())
+  companyId Int
   name      String
+  title     String
   abilities String[]
-  isSystem  Boolean  @default(false)
+  isOwner   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   members   CompanyUser[]
+  invitations Invitation[]
 
   @@unique([companyId, name])
 }
 
 model CompanyUser {
-  id        String   @id @default(cuid())
-  companyId String
-  userId    String
-  roleId    String
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  userId    Int
+  roleId    Int
   createdAt DateTime @default(now())
   company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -109,4 +155,607 @@ model CompanyUser {
 
   @@unique([companyId, userId])
   @@index([userId])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+model Invitation {
+  id          Int              @id @default(autoincrement())
+  companyId   Int
+  email       String
+  roleId      Int
+  token       String           @unique
+  status      InvitationStatus @default(PENDING)
+  invitedById Int
+  expiresAt   DateTime
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  company     Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role        Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, email])
+}
+
+model Customer {
+  id                 Int      @id @default(autoincrement())
+  companyId          Int
+  creatorId          Int?
+  name               String
+  email              String?
+  phone              String?
+  contactName        String?
+  companyName        String?
+  website            String?
+  prefix             String?
+  taxId              String?
+  currency           String
+  enablePortal       Boolean  @default(false)
+  portalPasswordHash String?
+  billingName        String?
+  billingStreet1     String?
+  billingStreet2     String?
+  billingCity        String?
+  billingState       String?
+  billingCountry     String?
+  billingZip         String?
+  billingPhone       String?
+  shippingName       String?
+  shippingStreet1    String?
+  shippingStreet2    String?
+  shippingCity       String?
+  shippingState      String?
+  shippingCountry    String?
+  shippingZip        String?
+  shippingPhone      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoices           Invoice[]
+  estimates          Estimate[]
+  recurringInvoices  RecurringInvoice[]
+  payments           Payment[]
+  expenses           Expense[]
+  portalSessions     PortalSession[]
+
+  @@unique([companyId, email])
+  @@index([companyId, name])
+}
+
+model PortalSession {
+  id         Int      @id @default(autoincrement())
+  tokenHash  String   @unique
+  customerId Int
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model PortalResetToken {
+  id         Int       @id @default(autoincrement())
+  tokenHash  String    @unique
+  customerId Int
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model Unit {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items     Item[]
+
+  @@unique([companyId, name])
+}
+
+model Item {
+  id          Int       @id @default(autoincrement())
+  companyId   Int
+  creatorId   Int?
+  name        String
+  description String?
+  price       BigInt
+  unitId      Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit        Unit?     @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  taxes       ItemTax[]
+  lines       LineItem[]
+
+  @@index([companyId, name])
+}
+
+model ItemTax {
+  id        Int     @id @default(autoincrement())
+  itemId    Int
+  taxTypeId Int
+  item      Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  taxType   TaxType @relation(fields: [taxTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([itemId, taxTypeId])
+}
+
+enum TaxCalculation {
+  PERCENTAGE
+  FIXED
+}
+
+enum TaxTransaction {
+  SALES
+  PURCHASES
+}
+
+model TaxType {
+  id              Int            @id @default(autoincrement())
+  companyId       Int
+  name            String
+  calculationType TaxCalculation @default(PERCENTAGE)
+  percent         Float?
+  fixedAmount     BigInt?
+  compound        Boolean        @default(false)
+  description     String?
+  transactionType TaxTransaction @default(SALES)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  itemTaxes       ItemTax[]
+  appliedTaxes    AppliedTax[]
+  expenseTaxes    ExpenseTax[]
+
+  @@unique([companyId, name])
+}
+
+enum InvoiceType {
+  INVOICE
+  CREDIT_NOTE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  COMPLETED
+}
+
+enum PaidStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+}
+
+enum DiscountType {
+  FIXED
+  PERCENTAGE
+}
+
+model Invoice {
+  id                     Int           @id @default(autoincrement())
+  companyId              Int
+  creatorId              Int?
+  customerId             Int
+  type                   InvoiceType   @default(INVOICE)
+  invoiceNumber          String
+  sequenceNumber         Int
+  customerSequenceNumber Int
+  referenceNumber        String?
+  invoiceDate            DateTime      @db.Date
+  dueDate                DateTime?     @db.Date
+  currency               String
+  exchangeRate           Float         @default(1)
+  status                 InvoiceStatus @default(DRAFT)
+  paidStatus             PaidStatus    @default(UNPAID)
+  overdue                Boolean       @default(false)
+  sent                   Boolean       @default(false)
+  viewed                 Boolean       @default(false)
+  taxPerItem             Boolean       @default(false)
+  discountPerItem        Boolean       @default(false)
+  taxIncluded            Boolean       @default(false)
+  discountType           DiscountType  @default(FIXED)
+  discount               Float         @default(0)
+  discountVal            BigInt        @default(0)
+  subTotal               BigInt        @default(0)
+  tax                    BigInt        @default(0)
+  total                  BigInt        @default(0)
+  dueAmount              BigInt        @default(0)
+  baseSubTotal           BigInt        @default(0)
+  baseDiscountVal        BigInt        @default(0)
+  baseTax                BigInt        @default(0)
+  baseTotal              BigInt        @default(0)
+  baseDueAmount          BigInt        @default(0)
+  notes                  String?
+  templateName           String        @default("invoice1")
+  recurringInvoiceId     Int?
+  relatedInvoiceId       Int?
+  creditReason           String?
+  uniqueHash             String        @unique
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  company                Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer               Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  recurringInvoice       RecurringInvoice? @relation(fields: [recurringInvoiceId], references: [id], onDelete: SetNull)
+  relatedInvoice         Invoice?      @relation("CreditNotes", fields: [relatedInvoiceId], references: [id], onDelete: SetNull)
+  creditNotes            Invoice[]     @relation("CreditNotes")
+  lines                  LineItem[]
+  taxes                  AppliedTax[]
+  allocations            PaymentAllocation[]
+
+  @@unique([companyId, invoiceNumber])
+  @@index([companyId, type, status])
+  @@index([customerId])
+}
+
+enum EstimateStatus {
+  DRAFT
+  SENT
+  VIEWED
+  EXPIRED
+  ACCEPTED
+  REJECTED
+}
+
+model Estimate {
+  id                     Int            @id @default(autoincrement())
+  companyId              Int
+  creatorId              Int?
+  customerId             Int
+  estimateNumber         String
+  sequenceNumber         Int
+  customerSequenceNumber Int
+  referenceNumber        String?
+  estimateDate           DateTime       @db.Date
+  expiryDate             DateTime?      @db.Date
+  currency               String
+  exchangeRate           Float          @default(1)
+  status                 EstimateStatus @default(DRAFT)
+  taxPerItem             Boolean        @default(false)
+  discountPerItem        Boolean        @default(false)
+  taxIncluded            Boolean        @default(false)
+  discountType           DiscountType   @default(FIXED)
+  discount               Float          @default(0)
+  discountVal            BigInt         @default(0)
+  subTotal               BigInt         @default(0)
+  tax                    BigInt         @default(0)
+  total                  BigInt         @default(0)
+  baseSubTotal           BigInt         @default(0)
+  baseDiscountVal        BigInt         @default(0)
+  baseTax                BigInt         @default(0)
+  baseTotal              BigInt         @default(0)
+  notes                  String?
+  templateName           String         @default("estimate1")
+  uniqueHash             String         @unique
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  company                Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer               Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lines                  LineItem[]
+  taxes                  AppliedTax[]
+
+  @@unique([companyId, estimateNumber])
+  @@index([companyId, status])
+  @@index([customerId])
+}
+
+enum RecurringStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+}
+
+enum LimitBy {
+  NONE
+  COUNT
+  DATE
+}
+
+model RecurringInvoice {
+  id                Int             @id @default(autoincrement())
+  companyId         Int
+  creatorId         Int?
+  customerId        Int
+  startsAt          DateTime
+  frequency         String
+  status            RecurringStatus @default(ACTIVE)
+  nextInvoiceAt     DateTime?
+  limitBy           LimitBy         @default(NONE)
+  limitCount        Int?
+  limitDate         DateTime?       @db.Date
+  sendAutomatically Boolean         @default(false)
+  notifyCreator     Boolean         @default(false)
+  lastError         String?
+  lastAttemptAt     DateTime?
+  currency          String
+  exchangeRate      Float           @default(1)
+  taxPerItem        Boolean         @default(false)
+  discountPerItem   Boolean         @default(false)
+  taxIncluded       Boolean         @default(false)
+  discountType      DiscountType    @default(FIXED)
+  discount          Float           @default(0)
+  discountVal       BigInt          @default(0)
+  subTotal          BigInt          @default(0)
+  tax               BigInt          @default(0)
+  total             BigInt          @default(0)
+  notes             String?
+  templateName      String          @default("invoice1")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  company           Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer          Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lines             LineItem[]
+  taxes             AppliedTax[]
+  invoices          Invoice[]
+  runs              RecurringRun[]
+
+  @@index([status, nextInvoiceAt])
+}
+
+model RecurringRun {
+  id                 Int              @id @default(autoincrement())
+  recurringInvoiceId Int
+  scheduledFor       DateTime         @db.Date
+  scheduledAt        DateTime
+  invoiceId          Int?
+  createdAt          DateTime         @default(now())
+  recurringInvoice   RecurringInvoice @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([recurringInvoiceId, scheduledAt])
+}
+
+model LineItem {
+  id                 Int               @id @default(autoincrement())
+  companyId          Int
+  invoiceId          Int?
+  estimateId         Int?
+  recurringInvoiceId Int?
+  itemId             Int?
+  position           Int               @default(0)
+  name               String
+  description        String?
+  unitName           String?
+  quantity           Float
+  price              BigInt
+  discountType       DiscountType      @default(FIXED)
+  discount           Float             @default(0)
+  discountVal        BigInt            @default(0)
+  tax                BigInt            @default(0)
+  total              BigInt
+  basePrice          BigInt            @default(0)
+  baseDiscountVal    BigInt            @default(0)
+  baseTax            BigInt            @default(0)
+  baseTotal          BigInt            @default(0)
+  exchangeRate       Float             @default(1)
+  sourceLineId       Int?
+  invoice            Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  estimate           Estimate?         @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  recurringInvoice   RecurringInvoice? @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)
+  item               Item?             @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  taxes              AppliedTax[]
+
+  @@index([invoiceId])
+  @@index([estimateId])
+  @@index([recurringInvoiceId])
+}
+
+model AppliedTax {
+  id                 Int               @id @default(autoincrement())
+  companyId          Int
+  taxTypeId          Int?
+  name               String
+  calculationType    TaxCalculation
+  percent            Float?
+  fixedAmount        BigInt?
+  compound           Boolean           @default(false)
+  amount             BigInt
+  baseAmount         BigInt            @default(0)
+  position           Int               @default(0)
+  invoiceId          Int?
+  estimateId         Int?
+  recurringInvoiceId Int?
+  lineItemId         Int?
+  taxType            TaxType?          @relation(fields: [taxTypeId], references: [id], onDelete: Restrict)
+  invoice            Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  estimate           Estimate?         @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+  recurringInvoice   RecurringInvoice? @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)
+  lineItem           LineItem?         @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([estimateId])
+  @@index([lineItemId])
+}
+
+model PaymentMethod {
+  id        Int       @id @default(autoincrement())
+  companyId Int
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  payments  Payment[]
+  expenses  Expense[]
+
+  @@unique([companyId, name])
+}
+
+model Payment {
+  id                     Int            @id @default(autoincrement())
+  companyId              Int
+  creatorId              Int?
+  customerId             Int
+  paymentNumber          String
+  sequenceNumber         Int
+  customerSequenceNumber Int
+  paymentDate            DateTime       @db.Date
+  amount                 BigInt
+  currency               String
+  exchangeRate           Float          @default(1)
+  baseAmount             BigInt
+  paymentMethodId        Int?
+  notes                  String?
+  uniqueHash             String         @unique
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  company                Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer               Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  paymentMethod          PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  allocations            PaymentAllocation[]
+
+  @@unique([companyId, paymentNumber])
+  @@index([customerId])
+}
+
+model PaymentAllocation {
+  id         Int     @id @default(autoincrement())
+  paymentId  Int
+  invoiceId  Int
+  amount     BigInt
+  baseAmount BigInt
+  payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([paymentId, invoiceId])
+  @@index([invoiceId])
+}
+
+model ExpenseCategory {
+  id          Int       @id @default(autoincrement())
+  companyId   Int
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expenses    Expense[]
+}
+
+model Expense {
+  id              Int             @id @default(autoincrement())
+  companyId       Int
+  creatorId       Int?
+  expenseDate     DateTime        @db.Date
+  expenseNumber   String?
+  categoryId      Int
+  amount          BigInt
+  currency        String
+  exchangeRate    Float           @default(1)
+  baseAmount      BigInt
+  paymentMethodId Int?
+  customerId      Int?
+  notes           String?
+  receiptPath     String?
+  receiptName     String?
+  receiptMime     String?
+  receiptSize     Int?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category        ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  paymentMethod   PaymentMethod?  @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  customer        Customer?       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  taxes           ExpenseTax[]
+
+  @@index([companyId, expenseDate])
+}
+
+model ExpenseTax {
+  id        Int     @id @default(autoincrement())
+  expenseId Int
+  taxTypeId Int
+  amount    BigInt
+  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  taxType   TaxType @relation(fields: [taxTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([expenseId, taxTypeId])
+}
+
+model CustomField {
+  id            Int      @id @default(autoincrement())
+  companyId     Int
+  name          String
+  label         String
+  slug          String
+  modelType     String
+  type          String
+  placeholder   String?
+  options       String[]
+  defaultAnswer String?
+  isRequired    Boolean  @default(false)
+  order         Int      @default(0)
+  placement     String   @default("internal")
+  validation    Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  values        CustomFieldValue[]
+
+  @@unique([companyId, slug])
+}
+
+model CustomFieldValue {
+  id            Int         @id @default(autoincrement())
+  companyId     Int
+  customFieldId Int
+  modelType     String
+  modelId       Int
+  value         String?
+  customField   CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([customFieldId, modelType, modelId])
+  @@index([modelType, modelId])
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  companyId Int
+  type      String
+  name      String
+  notes     String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, type, name])
+}
+
+model ExchangeRateLog {
+  id           Int      @id @default(autoincrement())
+  companyId    Int
+  currency     String
+  baseCurrency String
+  rate         Float
+  createdAt    DateTime @default(now())
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, currency])
+}
+
+model EmailLog {
+  id           Int      @id @default(autoincrement())
+  companyId    Int
+  from         String
+  to           String
+  cc           String?
+  bcc          String?
+  subject      String
+  body         String
+  mailableType String
+  mailableId   Int
+  token        String   @unique
+  createdAt    DateTime @default(now())
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([mailableType, mailableId])
+}
+
+model JobState {
+  key       String   @id
+  lastRunAt DateTime
 }

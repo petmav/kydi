@@ -17,7 +17,7 @@ export default async function InstallPage() {
   return (
     <>
       <InstallSteps current={1} />
-      <h1 className="text-xl font-semibold tracking-tight">Welcome to Halyard</h1>
+      <h1 className="text-xl font-semibold">Welcome to Halyard</h1>
       <p className="mt-1 text-sm text-muted">
         Let&apos;s set up your instance. First, create the administrator account. You can invite teammates later.
       </p>

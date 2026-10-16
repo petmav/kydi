@@ -29,7 +29,7 @@ export async function installAdminAction(_prev: ActionState, formData: FormData)
 
   const created = await db.$transaction(async (tx) => {
     if ((await tx.user.count()) > 0) return null;
-    return tx.user.create({ data: { name, email, passwordHash, isSuperAdmin: true } });
+    return tx.user.create({ data: { name, email, passwordHash, role: "SUPER_ADMIN" } });
   });
   if (!created) return failure("Halyard is already installed. Sign in instead.");
   await createSession(created.id);
@@ -44,10 +44,10 @@ const companySchema = z.object({
     .trim()
     .transform((v) => (v === "" ? null : v))
     .nullable(),
-  timezone: z.string().refine(isTimezone, "Choose a valid time zone."),
-  dateFormat: z.string().min(1),
+  time_zone: z.string().refine(isTimezone, "Choose a valid time zone."),
+  date_format: z.string().min(1),
   locale: z.string().min(2),
-  fiscalYearStartMonth: z.coerce.number().int().min(1).max(12).transform(String),
+  fiscal_year: z.string().regex(/^\d{1,2}-\d{1,2}$/, "Choose a fiscal year."),
 });
 
 export async function createCompanyAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -56,13 +56,18 @@ export async function createCompanyAction(_prev: ActionState, formData: FormData
   const parsed = parseForm(companySchema, formData);
   if (!parsed.success) return parsed.state;
 
-  // During install, regular users cannot create more companies; only super admins may add companies.
   const memberships = await db.companyUser.count({ where: { userId: user.id } });
-  if (memberships > 0 && !user.isSuperAdmin) return failure("Only the instance owner can create companies.");
+  if (memberships > 0) {
+    const owns = await db.company.count({ where: { ownerId: user.id } });
+    if (!owns && user.role !== "SUPER_ADMIN") return failure("Only company owners can create another company.");
+  }
 
+  if (await db.company.findUnique({ where: { name: parsed.data.name } })) {
+    return failure("A company with this name already exists.", { name: ["A company with this name already exists."] });
+  }
   const company = await createCompanyForUser(user.id, parsed.data);
   const jar = await cookies();
-  jar.set(COMPANY_COOKIE, company.id, { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+  jar.set(COMPANY_COOKIE, String(company.id), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
   await setFlash(memberships === 0 ? `Welcome to Halyard! ${company.name} is ready.` : `${company.name} created.`);
   redirect("/dashboard");
 }

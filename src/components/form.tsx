@@ -79,7 +79,7 @@ export function Form({
         {...rest}
       >
         {showErrorSummary && state && !state.ok && state.error ? (
-          <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
             {state.error}
           </div>
         ) : null}
@@ -268,7 +268,7 @@ export function CheckboxField({
         id={id}
         name={name}
         type="checkbox"
-        className="mt-0.5 h-4 w-4 rounded border-line text-brand-600 focus-ring"
+        className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-brand-700 focus-ring"
         aria-describedby={hint ? `${id}-hint` : undefined}
         {...input}
       />

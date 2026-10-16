@@ -107,7 +107,7 @@ export function ConfirmButton({
         ref={ref}
         onClose={() => setOpen(false)}
         aria-labelledby="confirm-title"
-        className="m-auto w-full max-w-md rounded-xl border border-line bg-white p-0 shadow-2xl backdrop:bg-slate-900/40"
+        className="m-auto w-full max-w-md rounded-md border border-line bg-white p-0 shadow-xl backdrop:bg-slate-900/40"
       >
         {open ? (
           <div className="p-6">
