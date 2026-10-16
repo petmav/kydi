@@ -1,4 +1,5 @@
 import { cookies, headers } from "next/headers";
+import type { z } from "zod";
 import { db } from "@/lib/db";
 import { sha256, unsignValue } from "@/lib/auth/tokens";
 import { SESSION_COOKIE } from "@/lib/auth/session";
@@ -15,7 +16,8 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiContext(): Promise<CompanyContext> {
+/** Authenticates the caller (bearer token or session cookie) without resolving a company. */
+export async function apiUser() {
   const h = await headers();
   let userId: number | null = null;
   const auth = h.get("authorization");
@@ -31,7 +33,14 @@ export async function apiContext(): Promise<CompanyContext> {
     if (!s || s.expiresAt < new Date()) throw new ApiError(401, "Unauthenticated.");
     userId = s.userId;
   }
-  const user = (await db.user.findUnique({ where: { id: userId! } }))!;
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user) throw new ApiError(401, "Unauthenticated.");
+  return user;
+}
+
+export async function apiContext(): Promise<CompanyContext> {
+  const h = await headers();
+  const user = await apiUser();
   const memberships = await db.companyUser.findMany({ where: { userId: user.id }, include: { company: true, role: true }, orderBy: { createdAt: "asc" } });
   if (!memberships.length) throw new ApiError(403, "No company membership.");
   const wanted = Number(h.get("company"));
@@ -88,3 +97,30 @@ export function cfFromBody(body: Record<string, unknown>): Record<string, unknow
   if (Array.isArray(list)) for (const f of list) out[`cf_${f.id}`] = f.value;
   return out;
 }
+
+export function needOwner(ctx: CompanyContext) {
+  if (!ctx.isOwner) throw new ApiError(403, "Only the company owner can do this.");
+}
+
+/** Unwraps a service result or throws the matching API error (422 by default). */
+export function unwrap<T>(r: { ok: true; id: T } | { ok: false; error: string; fieldErrors?: Record<string, string[] | undefined>; status?: number }): T {
+  if (!r.ok) throw new ApiError(r.status ?? 422, r.error, r.fieldErrors);
+  return r.id;
+}
+
+/** Parses a request body with a zod schema or throws a 422 with field errors. */
+export function parseBody<S extends z.ZodTypeAny>(schema: S, body: unknown): z.infer<S> {
+  const r = schema.safeParse(body);
+  if (!r.success) {
+    const errors: Record<string, string[]> = {};
+    for (const i of r.error.issues) (errors[i.path.join(".") || "body"] ??= []).push(i.message);
+    throw new ApiError(422, "The given data was invalid.", errors);
+  }
+  return r.data;
+}
+
+export const idList = (body: Record<string, unknown>, key = "ids") => (Array.isArray(body[key]) ? (body[key] as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n > 0) : []);
+
+/** Router signature for the /api/v1 extension modules; returns null when the path is not theirs. */
+export type V1Request = { ctx: CompanyContext; req: Request; url: URL; seg: string[]; method: string; body: Record<string, unknown> };
+export type V1Router = (r: V1Request) => Promise<Response | null>;

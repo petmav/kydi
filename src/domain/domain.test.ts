@@ -108,3 +108,15 @@ describe("dates", () => {
     expect(fiscalYearRange("1-12", "2026-02-10")).toEqual({ from: "2026-01-01", to: "2026-12-31" });
   });
 });
+
+describe("date-only arithmetic across DST changes", () => {
+  it("advances one calendar day at a time regardless of the server time zone", async () => {
+    const { addDaysIso } = await import("@/lib/dates");
+    // Australia/Sydney switches to daylight time on 2026-10-04; the old local-time helper repeated 2026-10-03.
+    const days = [];
+    for (let d = "2026-10-02"; d <= "2026-10-06"; d = addDaysIso(d, 1)) days.push(d);
+    expect(days).toEqual(["2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05", "2026-10-06"]);
+    expect(addDaysIso("2026-10-16", 7)).toBe("2026-10-23");
+    expect(addDaysIso("2026-03-01", -1)).toBe("2026-02-28");
+  });
+});

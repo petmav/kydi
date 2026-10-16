@@ -1,4 +1,4 @@
-import { addDays, format as dfFormat, isValid, parse } from "date-fns";
+import { format as dfFormat, isValid, parse } from "date-fns";
 
 /** Date-only values travel as "yyyy-MM-dd" strings and are stored as UTC-midnight Dates (@db.Date). */
 
@@ -15,7 +15,8 @@ export function parseIsoDate(s: string): Date | null {
 export function addDaysIso(s: string, days: number): string {
   const d = parseIsoDate(s);
   if (!d) return s;
-  return isoDate(addDays(d, days));
+  // Pure UTC arithmetic: local-time helpers skip or repeat a day across the server's DST changes.
+  return isoDate(new Date(d.getTime() + days * 86400000));
 }
 
 /** Wall-clock parts of an instant in an IANA zone. */

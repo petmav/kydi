@@ -97,10 +97,18 @@ Create a personal token under **Settings → API tokens** (or `POST /api/v1/auth
 
 - Lists accept `page`, `limit` (10 default, `all` for everything), `orderByField`, `orderBy`, `search` and
   resource filters; responses are `{ data, meta: { current_page, last_page, per_page, total, <resource>_total_count } }`.
-- Resources: `customers`, `items`, `invoices`, `estimates`, `payments`, `expenses` (CRUD + `POST /<resource>/delete`
-  with `{ "ids": [] }`), `invoices/{id}/send|status|clone`, `estimates/{id}/send|status|clone|convert-to-invoice`,
-  `payments/{id}/send`, `dashboard`, `next-number?key=invoice&customer_id=`, `bootstrap`, and read-only
-  `tax-types`, `payment-methods`, `units`, `categories`, `custom-fields`, `notes`, `recurring-invoices`, `companies`.
+- Resources: `customers`, `items`, `invoices`, `estimates`, `payments`, `expenses`, `recurring-invoices` (CRUD +
+  `POST /<resource>/delete` with `{ "ids": [] }`), `invoices/{id}/send|send/preview|status|clone|convert-to-estimate|credit-note`,
+  `estimates/{id}/send|send/preview|status|clone|convert-to-invoice`, `payments/{id}/send|send/preview`,
+  `PUT payments/{id}/allocations` (replace the allocation set), `recurring-invoices/{id}/actions` (pause / resume),
+  `recurring-invoice-frequency` (next five runs), `customers/{id}/stats|statement|statement/send|credit-allocations`,
+  `dashboard`, `next-number?key=invoice&customer_id=`, `bootstrap`.
+- Team and company (owner only unless noted): `members` (CRUD, `POST members/delete` with `{ "users": [] }`), `roles`
+  (CRUD), `abilities`, `company` (PUT profile, `POST company/logo` with a base64 data URL, `GET|POST company/settings`,
+  `GET company/has-transactions`, `POST company/transfer-ownership/{userId}`), `companies` (list, create, delete),
+  `company-invitations` (list, create, delete; `GET pending`, `POST {token}/accept|decline` for the invitee), `me`
+  (profile and user settings).
+- Read-only lists: `tax-types`, `payment-methods`, `units`, `categories`, `custom-fields`, `notes`.
 - Money is integer minor units; dates are `YYYY-MM-DD`. Errors: 401, 403, 404, 422 `{ message, errors }`.
 
 ## Environment variables
