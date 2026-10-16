@@ -20,6 +20,9 @@ const NAV: Entry[] = [
   { group: "Admin", href: "/members", label: "Members", icon: "members", ownerOnly: true },
   { group: "Admin", href: "/reports", label: "Reports", icon: "reports", ability: "view-financial-reports" },
   { group: "Admin", href: "/settings", label: "Settings", icon: "settings" },
+  {group: "Main", href: "/cash-flow", label: "Cash-flow forecast", icon: "reports",ability: "dashboard",
+  },
+  {group: "Main", href: "/cash-flow", label: "Cash-flow forecast",icon: "reports",ability: "dashboard"},
 ];
 
 const QUICK: (QuickCreate & { ability: Ability })[] = [
