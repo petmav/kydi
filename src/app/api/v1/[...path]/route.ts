@@ -7,7 +7,7 @@ import { parseIsoDate } from "@/lib/dates";
 import { ApiError, apiContext, cfFromBody, envelope, fail, listParams, need, ok } from "@/server/api";
 import { customerSchema, deleteCustomers, saveCustomer, customerBalances } from "@/server/customers";
 import { deleteItems, itemSchema, saveItem } from "@/server/items";
-import type { DocumentInput } from "@/server/documents";
+import { documentSchema, type DocumentInput } from "@/server/documents";
 import { cloneInvoice, deleteInvoices, markInvoiceCompleted, markInvoiceSent, saveInvoice } from "@/server/invoices";
 import { cloneEstimate, convertEstimateToInvoice, deleteEstimates, saveEstimate, setEstimateStatus } from "@/server/estimates";
 import { deletePayments, paymentSchema, savePayment } from "@/server/payments";
@@ -26,6 +26,12 @@ const words = (terms: string[], fields: string[]) => terms.map((t) => ({ OR: fie
 function check<T>(r: { ok: true; id: T } | { ok: false; error: string; fieldErrors?: Record<string, string[] | undefined>; status?: number }): T {
   if (!r.ok) throw new ApiError(r.status ?? 422, r.error, r.fieldErrors);
   return r.id;
+}
+
+function parseDoc(input: DocumentInput): DocumentInput {
+  const r = documentSchema.safeParse(input);
+  if (!r.success) throw new ApiError(422, "The given data was invalid.", Object.fromEntries(r.error.issues.map((i) => [i.path.join(".") || "items", [i.message]])));
+  return r.data;
 }
 
 /** Maps the API document body (minor units, snake_case) to the shared document input. */
@@ -141,7 +147,7 @@ const crud = {
     }) as Handler,
     save: (async (ctx, _r, _u, id, body) => {
       need(ctx, id ? "edit-invoice" : "create-invoice");
-      const newId = check(await saveInvoice(ctx, id, docInput(body, "invoice_date", "due_date", "invoice_number"), cfFromBody(body), !!body.invoiceSend && !id));
+      const newId = check(await saveInvoice(ctx, id, parseDoc(docInput(body, "invoice_date", "due_date", "invoice_number")), cfFromBody(body), !!body.invoiceSend && !id));
       return ok({ data: await db.invoice.findUnique({ where: { id: newId }, include: { lines: { include: { taxes: true } }, taxes: true } }) }, id ? 200 : 201);
     }) as Handler,
     remove: (async (ctx, _r, _u, _id, body) => {
@@ -169,7 +175,7 @@ const crud = {
     }) as Handler,
     save: (async (ctx, _r, _u, id, body) => {
       need(ctx, id ? "edit-estimate" : "create-estimate");
-      const newId = check(await saveEstimate(ctx, id, docInput(body, "estimate_date", "expiry_date", "estimate_number"), cfFromBody(body), !!body.estimateSend && !id));
+      const newId = check(await saveEstimate(ctx, id, parseDoc(docInput(body, "estimate_date", "expiry_date", "estimate_number")), cfFromBody(body), !!body.estimateSend && !id));
       return ok({ data: await db.estimate.findUnique({ where: { id: newId }, include: { lines: true, taxes: true } }) }, id ? 200 : 201);
     }) as Handler,
     remove: (async (ctx, _r, _u, _id, body) => {
@@ -254,7 +260,7 @@ async function login(req: Request) {
   const user = await db.user.findUnique({ where: { email } });
   if (!user || !(await verifyPassword(user.passwordHash, String(body.password ?? "")))) throw new ApiError(422, "The provided credentials are incorrect.", { email: ["invalid_credentials"] });
   const prefix = randomToken(6).replace(/[^A-Za-z0-9]/g, "x").slice(0, 8);
-  const token = `hyd_${prefix}_${randomToken(32)}`;
+  const token = `kyd_${prefix}_${randomToken(32)}`;
   await db.apiToken.create({ data: { userId: user.id, name: String(body.device_name ?? "API client").slice(0, 80), prefix, tokenHash: sha256(token) } });
   return ok({ type: "Bearer", token });
 }
