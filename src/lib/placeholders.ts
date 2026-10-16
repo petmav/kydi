@@ -70,7 +70,7 @@ export function companyValues(c: CompanyLike, countryName: (code: string | null 
 export function customerValues(c: CustomerLike, countryName: (code: string | null | undefined) => string | null) {
   const s = (k: string) => (typeof c[k] === "string" ? (c[k] as string) : null);
   const block = (prefix: "billing" | "shipping", P: string) => ({
-    [`${P}_ADDRESS_NAME`]: s(`${prefix}Name`),
+    [`${P}_ADDRESS_NAME`]: s(`${prefix}Name`) || c.name,
     [`${P}_ADDRESS_STREET_1`]: s(`${prefix}Street1`),
     [`${P}_ADDRESS_STREET_2`]: s(`${prefix}Street2`),
     [`${P}_CITY`]: s(`${prefix}City`),
