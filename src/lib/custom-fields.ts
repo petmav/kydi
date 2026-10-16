@@ -87,7 +87,7 @@ function checkValue(f: CustomFieldDef, raw: string, today: string): string | nul
 export async function validateCustomFieldAnswers(
   companyId: number,
   modelType: CfModel,
-  formData: FormData,
+  formData: FormData | Record<string, unknown>,
   today = new Date().toISOString().slice(0, 10),
 ): Promise<{ ok: true; values: Map<number, string | null> } | { ok: false; errors: FieldErrors }> {
   const fields = await getCustomFields(companyId, modelType);
@@ -95,7 +95,8 @@ export async function validateCustomFieldAnswers(
   const errors: FieldErrors = {};
   for (const f of fields) {
     const key = `cf_${f.id}`;
-    let raw = formData.get(key);
+    let raw: unknown = formData instanceof FormData ? formData.get(key) : formData[key];
+    if (typeof raw === "boolean" || typeof raw === "number") raw = String(raw);
     if (f.type === "Switch") raw = raw === "on" || raw === "true" ? "true" : "false";
     const str = typeof raw === "string" ? raw.trim() : "";
     if (!str) {
