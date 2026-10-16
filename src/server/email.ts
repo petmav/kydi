@@ -69,13 +69,13 @@ export async function emailDefaults(companyId: number, kind: DocKind, id: number
   };
 }
 
-function layout(opts: { companyName: string; logoUrl: string | null; body: string; buttonLabel: string; link: string }) {
+export function layout(opts: { companyName: string; logoUrl: string | null; body: string; buttonLabel?: string; link?: string }) {
   return `<!doctype html><html><body style="margin:0;background:#f8fafc;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#0f172a">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:24px 0"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #e2e8f0;border-radius:6px">
 <tr><td style="padding:20px 28px;border-bottom:1px solid #e2e8f0">${opts.logoUrl ? `<img src="${opts.logoUrl}" alt="${esc(opts.companyName)}" style="max-height:40px">` : `<strong style="font-size:18px">${esc(opts.companyName)}</strong>`}</td></tr>
 <tr><td style="padding:24px 28px;font-size:14px;line-height:1.6">${opts.body}
-<p style="margin:24px 0"><a href="${opts.link}" style="background:#1d4ed8;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px;display:inline-block;font-weight:600">${esc(opts.buttonLabel)}</a></p></td></tr>
+${opts.link && opts.buttonLabel ? `<p style="margin:24px 0"><a href="${opts.link}" style="background:#1d4ed8;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px;display:inline-block;font-weight:600">${esc(opts.buttonLabel)}</a></p>` : ""}</td></tr>
 <tr><td style="padding:14px 28px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b">Sent with Kydi</td></tr>
 </table></td></tr></table></body></html>`;
 }

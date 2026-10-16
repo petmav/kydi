@@ -4,10 +4,13 @@ import { verifyPassword } from "@/lib/auth/password";
 import { randomToken, sha256 } from "@/lib/auth/tokens";
 import { rateLimit } from "@/lib/rate-limit";
 import { parseIsoDate } from "@/lib/dates";
-import { ApiError, apiContext, cfFromBody, envelope, fail, listParams, need, ok } from "@/server/api";
+import { ApiError, apiContext, apiUser, cfFromBody, envelope, fail, listParams, need, ok, unwrap } from "@/server/api";
+import { teamRouter } from "@/server/v1/team";
+import { salesRouter } from "@/server/v1/sales";
+import { pendingInvitationsFor, respondToInvitation } from "@/server/team";
 import { customerSchema, deleteCustomers, saveCustomer, customerBalances } from "@/server/customers";
 import { deleteItems, itemSchema, saveItem } from "@/server/items";
-import { documentSchema, type DocumentInput } from "@/server/documents";
+import { docInput, parseDoc } from "@/server/v1/doc-input";
 import { cloneInvoice, deleteInvoices, markInvoiceCompleted, markInvoiceSent, saveInvoice } from "@/server/invoices";
 import { cloneEstimate, convertEstimateToInvoice, deleteEstimates, saveEstimate, setEstimateStatus } from "@/server/estimates";
 import { deletePayments, paymentSchema, savePayment } from "@/server/payments";
@@ -28,44 +31,6 @@ function check<T>(r: { ok: true; id: T } | { ok: false; error: string; fieldErro
   return r.id;
 }
 
-function parseDoc(input: DocumentInput): DocumentInput {
-  const r = documentSchema.safeParse(input);
-  if (!r.success) throw new ApiError(422, "The given data was invalid.", Object.fromEntries(r.error.issues.map((i) => [i.path.join(".") || "items", [i.message]])));
-  return r.data;
-}
-
-/** Maps the API document body (minor units, snake_case) to the shared document input. */
-function docInput(b: Record<string, unknown>, dateKey: string, closingKey: string, numberKey: string): DocumentInput {
-  const items = (b.items as Record<string, unknown>[] | undefined) ?? [];
-  const taxIds = (arr: unknown) => ((arr as { tax_type_id: number }[] | undefined) ?? []).map((t) => Number(t.tax_type_id));
-  return {
-    customerId: Number(b.customer_id),
-    date: String(b[dateKey] ?? ""),
-    closingDate: (b[closingKey] as string) ?? null,
-    number: String(b[numberKey] ?? ""),
-    referenceNumber: (b.reference_number as string) ?? null,
-    exchangeRate: (b.exchange_rate as number) ?? 1,
-    discountType: String(b.discount_type ?? "fixed").toUpperCase() === "PERCENTAGE" ? "PERCENTAGE" : "FIXED",
-    discount: Number(b.discount ?? 0),
-    taxIncluded: !!b.tax_included,
-    notes: (b.notes as string) ?? null,
-    templateName: (b.template_name as string) ?? undefined,
-    taxes: taxIds(b.taxes),
-    minor: true,
-    lines: items.map((l) => ({
-      itemId: l.item_id ? Number(l.item_id) : null,
-      name: String(l.name ?? ""),
-      description: (l.description as string) ?? null,
-      unitName: (l.unit_name as string) ?? null,
-      quantity: Number(l.quantity),
-      price: Number(l.price),
-      discountType: String(l.discount_type ?? "fixed").toUpperCase() === "PERCENTAGE" ? "PERCENTAGE" : "FIXED",
-      discount: Number(l.discount ?? 0),
-      taxes: taxIds(l.taxes),
-    })),
-  };
-}
-
 const crud = {
   customers: {
     list: (async (ctx, _r, url) => {
@@ -81,7 +46,8 @@ const crud = {
       need(ctx, "view-customer");
       const c = await db.customer.findFirst({ where: { id: id!, companyId: ctx.companyId }, omit: { portalPasswordHash: true } });
       if (!c) throw new ApiError(404, "Not found.");
-      return ok({ data: c });
+      const b = (await customerBalances(ctx.companyId, [c.id])).get(c.id)!;
+      return ok({ data: { ...c, password_added: !!(await db.customer.count({ where: { id: c.id, portalPasswordHash: { not: null } } })), invoice_due_amount: b.due, base_invoice_due_amount: b.baseDue, available_credit: b.credit, account_balance: b.due - b.credit } });
     }) as Handler,
     save: (async (ctx, _r, _u, id, body) => {
       need(ctx, id ? "edit-customer" : "create-customer");
@@ -269,6 +235,17 @@ async function route(req: Request, segments: string[]): Promise<Response> {
   const url = new URL(req.url);
   const method = req.method;
   if (segments[0] === "auth" && segments[1] === "login" && method === "POST") return login(req);
+  // Invitation answers work for signed-in users without any company yet (spec §2.4, §5.10).
+  if (segments[0] === "company-invitations" && segments[1] && (segments[2] === "accept" || segments[2] === "decline") && method === "POST") {
+    const user = await apiUser();
+    const companyId = unwrap(await respondToInvitation(user, segments[1], segments[2] === "accept"));
+    return ok({ success: true, company_id: companyId });
+  }
+  if (segments[0] === "company-invitations" && segments[1] === "pending" && method === "GET") {
+    const user = await apiUser();
+    const rows = await pendingInvitationsFor(user.email);
+    return ok({ data: rows.map((r) => ({ id: r.id, token: r.token, company: r.company, role: r.role.title, expires_at: r.expiresAt })) });
+  }
   const ctx = await apiContext();
   const body: Record<string, unknown> = method === "GET" || method === "DELETE" ? {} : ((await req.json().catch(() => ({}))) as Record<string, unknown>);
   const [resource, second, third] = segments;
@@ -287,6 +264,10 @@ async function route(req: Request, segments: string[]): Promise<Response> {
     const key = (url.searchParams.get("key") ?? "invoice") as NumberKind;
     if (!["invoice", "credit_note", "estimate", "payment"].includes(key)) throw new ApiError(422, "Unknown key.");
     return ok(await nextNumber(ctx.companyId, key, Number(url.searchParams.get("customer_id")) || null));
+  }
+  for (const router of [teamRouter, salesRouter]) {
+    const res = await router({ ctx, req, url, seg: segments, method, body });
+    if (res) return res;
   }
   if (simpleLists[resource] && method === "GET" && !second) return ok({ data: await simpleLists[resource](ctx) });
   const r = crud[resource as keyof typeof crud];

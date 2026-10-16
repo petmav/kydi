@@ -167,3 +167,22 @@ export async function creditPayments(companyId: number, customerId: number) {
     .map((p) => ({ id: p.id, number: p.paymentNumber, date: isoDate(p.paymentDate), available: Number(p.amount) - p.allocations.reduce((s, a) => s + Number(a.amount), 0) }))
     .filter((p) => p.available > 0);
 }
+
+/** Replaces the full allocation set of a payment (spec §9.2: PUT payments/{id}/allocations). */
+export async function replacePaymentAllocations(ctx: CompanyContext, paymentId: number, rows: { invoiceId: number; amount: number }[]): Promise<Result> {
+  const p = await db.payment.findFirst({ where: { id: paymentId, companyId: ctx.companyId } });
+  if (!p) return { ok: false, error: "Payment not found.", status: 404 };
+  try {
+    await db.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${p.id} FOR UPDATE`;
+        await replaceAllocations(tx, ctx, { id: p.id, customerId: p.customerId, currency: p.currency, amount: Number(p.amount), baseAmount: Number(p.baseAmount) }, rows);
+      },
+      { timeout: 20000 },
+    );
+    return { ok: true, id: p.id };
+  } catch (e) {
+    if (e instanceof DomainError) return { ok: false, error: e.message, fieldErrors: e.fieldErrors };
+    throw e;
+  }
+}
