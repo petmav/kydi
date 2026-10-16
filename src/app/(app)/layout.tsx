@@ -48,6 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       currentCompanyId={ctx.companyId}
       user={{ name: ctx.user.name, email: ctx.user.email }}
       canCreateCompany={ctx.isSuperAdmin || ctx.memberships.some((m) => m.company.ownerId === ctx.user.id)}
+      isAdmin={ctx.isSuperAdmin}
       switchAction={switchCompanyAction}
       logoutAction={logoutAction}
     >

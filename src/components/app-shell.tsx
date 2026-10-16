@@ -115,6 +115,7 @@ export function AppShell({
   currentCompanyId,
   user,
   canCreateCompany,
+  isAdmin = false,
   switchAction,
   logoutAction,
   children,
@@ -125,6 +126,7 @@ export function AppShell({
   currentCompanyId: number;
   user: { name: string; email: string };
   canCreateCompany: boolean;
+  isAdmin?: boolean;
   switchAction: (fd: FormData) => Promise<void>;
   logoutAction: () => Promise<void>;
   children: ReactNode;
@@ -138,7 +140,7 @@ export function AppShell({
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex h-14 items-center justify-between border-b border-line px-5">
-        <Link href="/dashboard" className="rounded focus-ring" aria-label="Halyard dashboard">
+        <Link href="/dashboard" className="rounded focus-ring" aria-label="Kydi dashboard">
           <Logo />
         </Link>
         <button
@@ -270,6 +272,11 @@ export function AppShell({
                 <Link href="/profile" role="menuitem" className={cn(menuItem, "mt-1")} onClick={close}>
                   <UserCircle2 className="h-4 w-4 text-slate-500" aria-hidden="true" /> Account settings
                 </Link>
+                {isAdmin ? (
+                  <Link href="/admin" role="menuitem" className={menuItem} onClick={close}>
+                    <Settings className="h-4 w-4 text-slate-500" aria-hidden="true" /> Administration
+                  </Link>
+                ) : null}
                 <form action={logoutAction}>
                   <button type="submit" role="menuitem" className={cn(menuItem, "text-red-700 hover:bg-red-50")}>
                     <LogOut className="h-4 w-4" aria-hidden="true" /> Sign out
