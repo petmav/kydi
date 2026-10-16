@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { ActionState } from "@/lib/action";
 import { Button, type ButtonSize, type ButtonVariant } from "@/components/ui/button";
@@ -88,6 +89,9 @@ export function ConfirmButton({
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  useEffect(() => {
+    if (open && ref.current && !ref.current.open) ref.current.showModal();
+  }, [open]);
 
   return (
     <>
@@ -95,14 +99,12 @@ export function ConfirmButton({
         variant={variant}
         size={size}
         className={className}
-        onClick={() => {
-          setOpen(true);
-          ref.current?.showModal();
-        }}
+        onClick={() => setOpen(true)}
         aria-haspopup="dialog"
       >
         {children}
       </Button>
+      {open ? createPortal(
       <dialog
         ref={ref}
         onClose={() => setOpen(false)}
@@ -139,7 +141,9 @@ export function ConfirmButton({
             </div>
           </div>
         ) : null}
-      </dialog>
+      </dialog>,
+      document.body,
+      ) : null}
     </>
   );
 }
