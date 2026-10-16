@@ -1,10 +1,33 @@
+# dependencies
 node_modules
+/.pnp
+.pnp.*
+
+# build output
 .next
+/out
+/build
 dist
+*.tsbuildinfo
+next-env.d.ts
+
+# env files (examples are committed)
 .env
 .env.local
 .env.*.local
-*.log
-.DS_Store
-coverage
+.env*.local
+!.env.example
+
+# local data
+/uploads
+/data
 prisma/*.db
+
+# testing
+coverage
+
+# misc
+*.log
+*.pem
+.DS_Store
+.vercel

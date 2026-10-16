@@ -1,0 +1,42 @@
+# Publish-time example ONLY. Not used by `zenith check` / `zenith up` (preview
+# policy forbids x-zenith.env / x-zenith.storage). When publishing, merge the
+# block below into zenith-compose.yml and replace the literal preview values in
+# services.app.environment / services.db.environment with references to these
+# declarations.
+#
+# x-zenith:
+#   env:
+#     SESSION_SECRET:
+#       generate:
+#         pattern: "[A-Za-z0-9]{64}"
+#         stable: true
+#     CRON_SECRET:
+#       generate:
+#         pattern: "[A-Za-z0-9]{40}"
+#         stable: true
+#     POSTGRES_PASSWORD:
+#       generate:
+#         pattern: "[A-Za-z0-9]{32}"
+#         stable: true
+#     DATABASE_URL:
+#       template: "postgresql://halyard:{{POSTGRES_PASSWORD | urlencode}}@db:5432/halyard?schema=public"
+#     APP_URL:
+#       alias: ZENITH_PUBLIC_URL
+#     HALYARD_DEMO_SEED:
+#       input:
+#         description: "Seed demo data on first boot (true/false)"
+#         default: "false"
+#     SMTP_HOST:
+#       alias: ZENITH_SMTP_HOST
+#     SMTP_PORT:
+#       alias: ZENITH_SMTP_PORT
+#     SMTP_USER:
+#       alias: ZENITH_SMTP_USER
+#     SMTP_PASS:
+#       alias: ZENITH_SMTP_PASS
+#     SMTP_FROM:
+#       alias: ZENITH_SMTP_FROM
+#   storage:
+#     uploads:
+#       volume: app-data
+#       public: false

@@ -1,0 +1,50 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://halyard:halyard-preview-db-pw@db:5432/halyard?schema=public"
+      SESSION_SECRET: "halyard-preview-only-session-secret-7f3c9a1e5b2d4f60"
+      CRON_SECRET: "halyard-preview-cron-secret"
+      UPLOAD_DIR: "/data/uploads"
+      HALYARD_DEMO_SEED: "true"
+      SMTP_FROM: "Halyard <no-reply@halyard.local>"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - app-data:/data
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: halyard
+      POSTGRES_PASSWORD: halyard-preview-db-pw
+      POSTGRES_DB: halyard
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U halyard -d halyard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  app-data: {}
+  db-data: {}
+
+x-zenith:
+  catalog:
+    name: Halyard
+    description: >-
+      Self-hosted invoicing for freelancers and small businesses: customers, items,
+      estimates, invoices, recurring billing, payments, expenses, reports, PDF
+      generation, email delivery and a customer portal.
+    authors: ["pmavr"]
+    tags: [invoicing, finance, business, saas]
+    source: https://github.com/pmavr/halyard
+    license: MIT
+  expose:
+    - service: app
+      port: 3000
+      web: true

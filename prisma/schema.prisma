@@ -1,0 +1,112 @@
+// Halyard data model. Money is stored as integers in minor units (e.g. cents).
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  isSuperAdmin  Boolean   @default(false)
+  locale        String    @default("en")
+  lastCompanyId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships   CompanyUser[]
+  sessions      Session[]
+  resetTokens   PasswordResetToken[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Company {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  email        String?
+  phone        String?
+  website      String?
+  taxId        String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+  logoPath     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  members      CompanyUser[]
+  roles        Role[]
+  settings     CompanySetting[]
+}
+
+model CompanySetting {
+  id        String  @id @default(cuid())
+  companyId String
+  key       String
+  value     String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, key])
+}
+
+model Role {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  abilities String[]
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  members   CompanyUser[]
+
+  @@unique([companyId, name])
+}
+
+model CompanyUser {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([companyId, userId])
+  @@index([userId])
+}
