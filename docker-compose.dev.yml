@@ -1,22 +1,22 @@
-# Local development database for Halyard.
+# Local development database for Kydi.
 # Usage: docker compose -f docker-compose.dev.yml up -d
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: halyard
-      POSTGRES_PASSWORD: halyard
-      POSTGRES_DB: halyard
+      POSTGRES_USER: kydi
+      POSTGRES_PASSWORD: kydi
+      POSTGRES_DB: kydi
     ports:
       - "5432:5432"
     volumes:
-      - halyard-dev-db:/var/lib/postgresql/data
+      - kydi-dev-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U halyard -d halyard"]
+      test: ["CMD-SHELL", "pg_isready -U kydi -d kydi"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  halyard-dev-db: {}
+  kydi-dev-db: {}

@@ -4,7 +4,7 @@ import "./globals.css";
 
 
 export const metadata: Metadata = {
-  title: { default: "Halyard", template: "%s · Halyard" },
+  title: { default: "Kydi", template: "%s · Kydi" },
   description: "Invoicing, estimates, payments and expenses for small businesses.",
 };
 

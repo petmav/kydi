@@ -23,7 +23,7 @@ export async function sendTestMailAction(_prev: ActionState, formData: FormData)
       const res = await sendMail({
         to: parsed.data.to,
         subject: parsed.data.subject,
-        html: `<p>${parsed.data.message.replace(/[<>&]/g, "").replace(/\n/g, "<br>")}</p><p>— ${ctx.company.name} via Halyard</p>`,
+        html: `<p>${parsed.data.message.replace(/[<>&]/g, "").replace(/\n/g, "<br>")}</p><p>— ${ctx.company.name} via Kydi</p>`,
       });
       return success(res.delivered ? "Test email sent." : "SMTP is not configured: the email was written to the server log.");
     } catch (err) {
@@ -44,7 +44,7 @@ export async function createApiTokenAction(_prev: ActionState, formData: FormDat
     if (!parsed.success) return parsed.state;
     const prefix = randomToken(6).replace(/[^A-Za-z0-9]/g, "x").slice(0, 8);
     const secret = randomToken(32);
-    const token = `hyd_${prefix}_${secret}`;
+    const token = `kyd_${prefix}_${secret}`;
     await db.apiToken.create({
       data: {
         userId: user.id,

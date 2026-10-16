@@ -47,7 +47,7 @@ function Blocks({ blocks, align = "left" }: { blocks: Block[]; align?: "left" | 
 
 export function SimplePdf({ d }: { d: SimplePdfData }) {
   return (
-    <Document title={d.title} creator="Halyard" producer="Halyard">
+    <Document title={d.title} creator="Kydi" producer="Kydi">
       <Page size="A4" style={s.page}>
         <View style={s.between}>
           {d.logo ? (

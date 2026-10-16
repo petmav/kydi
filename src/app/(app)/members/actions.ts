@@ -36,9 +36,9 @@ export async function inviteMemberAction(_prev: ActionState, formData: FormData)
     const link = `${await getBaseUrl()}/invitations/${token}`;
     await sendMail({
       to: email,
-      subject: `You're invited to join ${ctx.company.name} on Halyard`,
-      html: `<p>${ctx.user.name} invited you to join <strong>${ctx.company.name}</strong> on Halyard.</p><p><a href="${link}">Accept the invitation</a> (valid for 7 days).</p>`,
-    }).catch((e) => console.error("[halyard] invitation email failed", e));
+      subject: `You're invited to join ${ctx.company.name} on Kydi`,
+      html: `<p>${ctx.user.name} invited you to join <strong>${ctx.company.name}</strong> on Kydi.</p><p><a href="${link}">Accept the invitation</a> (valid for 7 days).</p>`,
+    }).catch((e) => console.error("[kydi] invitation email failed", e));
     revalidatePath("/members");
     return success(`Invitation sent to ${email}.`);
   });

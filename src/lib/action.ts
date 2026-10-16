@@ -69,7 +69,7 @@ export async function guard(fn: () => Promise<ActionState>): Promise<ActionState
       const digest = (err as { digest: string }).digest;
       if (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_HTTP_ERROR_FALLBACK") || digest === "NEXT_NOT_FOUND") throw err;
     }
-    console.error("[halyard] action failed", err);
+    console.error("[kydi] action failed", err);
     return failure("Something went wrong. Please try again.");
   }
 }

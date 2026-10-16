@@ -6,7 +6,7 @@ export const env = {
       if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
         throw new Error("SESSION_SECRET must be set (16+ characters)");
       }
-      return "halyard-insecure-development-secret";
+      return "kydi-insecure-development-secret";
     }
     return s;
   },
@@ -21,7 +21,7 @@ export const env = {
     return process.env.CRON_SECRET?.trim() || undefined;
   },
   get demoSeed(): boolean {
-    return process.env.HALYARD_DEMO_SEED === "true";
+    return process.env.KYDI_DEMO_SEED === "true";
   },
   smtp: {
     get host() {
@@ -37,7 +37,7 @@ export const env = {
       return process.env.SMTP_PASS || "";
     },
     get from() {
-      return process.env.SMTP_FROM?.trim() || "Halyard <no-reply@halyard.local>";
+      return process.env.SMTP_FROM?.trim() || "Kydi <no-reply@kydi.local>";
     },
   },
 };

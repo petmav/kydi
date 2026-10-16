@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 /** Plain wordmark. */
 export function Logo({ className }: { className?: string }) {
-  return <span className={cn("text-lg font-bold text-ink", className)}>Halyard</span>;
+  return <span className={cn("text-lg font-bold text-ink", className)}>Kydi</span>;
 }
 
 export function AuthCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {

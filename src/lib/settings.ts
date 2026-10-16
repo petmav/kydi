@@ -15,7 +15,7 @@ export const SETTING_DEFAULTS = {
   locale: "en-US",
   fiscal_year: "1-12",
   date_format: "yyyy-MM-dd",
-  notification_email: "no-reply@halyard.local",
+  notification_email: "no-reply@kydi.local",
   notify_invoice_viewed: "NO",
   notify_estimate_viewed: "NO",
   tax_per_item: "NO",

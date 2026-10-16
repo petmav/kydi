@@ -16,11 +16,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { next } = await searchParams;
   const demo = env.demoSeed;
   return (
-    <AuthCard title="Sign in to Halyard" subtitle="Welcome back. Enter your credentials to continue.">
+    <AuthCard title="Sign in to Kydi" subtitle="Welcome back. Enter your credentials to continue.">
       {demo ? (
         <div className="mb-5">
           <Alert tone="info" title="Demo instance">
-            Sign in as <strong>admin@halyard.test</strong> with password <strong>password123</strong>.
+            Sign in as <strong>admin@kydi.test</strong> with password <strong>password123</strong>.
           </Alert>
         </div>
       ) : null}

@@ -31,7 +31,7 @@ export async function installAdminAction(_prev: ActionState, formData: FormData)
     if ((await tx.user.count()) > 0) return null;
     return tx.user.create({ data: { name, email, passwordHash, role: "SUPER_ADMIN" } });
   });
-  if (!created) return failure("Halyard is already installed. Sign in instead.");
+  if (!created) return failure("Kydi is already installed. Sign in instead.");
   await createSession(created.id);
   redirect("/install/company");
 }
@@ -68,6 +68,6 @@ export async function createCompanyAction(_prev: ActionState, formData: FormData
   const company = await createCompanyForUser(user.id, parsed.data);
   const jar = await cookies();
   jar.set(COMPANY_COOKIE, String(company.id), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
-  await setFlash(memberships === 0 ? `Welcome to Halyard! ${company.name} is ready.` : `${company.name} created.`);
+  await setFlash(memberships === 0 ? `Welcome to Kydi! ${company.name} is ready.` : `${company.name} created.`);
   redirect("/dashboard");
 }

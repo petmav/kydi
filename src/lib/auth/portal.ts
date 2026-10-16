@@ -6,7 +6,7 @@ import { randomToken, sha256, signValue, unsignValue } from "@/lib/auth/tokens";
 import { isSecureRequest } from "@/lib/auth/session";
 
 /** Customer-portal sessions: separate cookie and table from staff sessions (spec §6.1). */
-export const PORTAL_COOKIE = "halyard_portal";
+export const PORTAL_COOKIE = "kydi_portal";
 const TTL = 1000 * 60 * 60 * 24 * 14;
 
 export const getPortalCompany = cache(async (slug: string) => {

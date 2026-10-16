@@ -145,7 +145,7 @@ export async function deleteRecurring(ctx: CompanyContext, ids: number[]) {
 async function notifyCreator(creatorId: number | null, subject: string, html: string) {
   if (!creatorId) return;
   const u = await db.user.findUnique({ where: { id: creatorId } });
-  if (u) await sendMail({ to: u.email, subject, html }).catch((e) => console.error("[halyard] creator notification failed", e));
+  if (u) await sendMail({ to: u.email, subject, html }).catch((e) => console.error("[kydi] creator notification failed", e));
 }
 
 /** Generates invoices for due schedules (spec §4.9). Safe to call repeatedly (idempotent per moment). */
@@ -160,7 +160,7 @@ export async function runDueSchedules(now = new Date()): Promise<number> {
     try {
       if (await runOne(id, now)) generated++;
     } catch (e) {
-      console.error(`[halyard] recurring run ${id} failed`, e);
+      console.error(`[kydi] recurring run ${id} failed`, e);
       await db.recurringInvoice.update({ where: { id }, data: { lastError: "recurring_invoice_failed", lastAttemptAt: now } }).catch(() => undefined);
     }
   }
@@ -256,7 +256,7 @@ async function runOne(id: number, now: Date): Promise<boolean> {
   const base = await getBaseUrl();
   if ("error" in outcome) {
     if (outcome.notify && outcome.isNew) {
-      await notifyCreator(outcome.creatorId, `Recurring invoice for ${outcome.customer} failed`, `<p>The recurring invoice for <strong>${outcome.customer}</strong> could not create an invoice.</p><p>Reason: ${LAST_ERROR_TEXT[outcome.error] ?? outcome.error}</p><p>Halyard retries hourly and emails you again only if the reason changes.</p><p><a href="${base}/recurring-invoices/${outcome.scheduleId}">Open the schedule</a></p>`);
+      await notifyCreator(outcome.creatorId, `Recurring invoice for ${outcome.customer} failed`, `<p>The recurring invoice for <strong>${outcome.customer}</strong> could not create an invoice.</p><p>Reason: ${LAST_ERROR_TEXT[outcome.error] ?? outcome.error}</p><p>Kydi retries hourly and emails you again only if the reason changes.</p><p><a href="${base}/recurring-invoices/${outcome.scheduleId}">Open the schedule</a></p>`);
     }
     return false;
   }

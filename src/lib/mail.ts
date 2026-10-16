@@ -59,7 +59,7 @@ export async function sendMail(message: MailMessage): Promise<{ delivered: boole
   if (!t) {
     console.log(
       [
-        "[halyard:mail] SMTP not configured, logging email instead",
+        "[kydi:mail] SMTP not configured, logging email instead",
         `  to: ${[payload.to].flat().join(", ")}`,
         payload.cc ? `  cc: ${[payload.cc].flat().join(", ")}` : null,
         `  subject: ${payload.subject}`,
