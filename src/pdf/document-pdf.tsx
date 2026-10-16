@@ -180,7 +180,7 @@ export function DocumentPdf({ d }: { d: PdfDoc }) {
     return "";
   };
   return (
-    <Document title={d.title} creator="Halyard" producer="Halyard">
+    <Document title={d.title} creator="Kydi" producer="Kydi">
       <Page size="A4" style={s.page}>
         <Header d={d} />
         {d.banner ? (

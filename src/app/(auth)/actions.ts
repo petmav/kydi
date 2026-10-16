@@ -69,9 +69,9 @@ export async function forgotPasswordAction(_prev: ActionState, formData: FormDat
     const link = `${await getBaseUrl()}/reset-password/${token}`;
     await sendMail({
       to: user.email,
-      subject: "Reset your Halyard password",
+      subject: "Reset your Kydi password",
       html: `<p>Hi ${escapeHtml(user.name)},</p><p>We received a request to reset your password. This link is valid for 60 minutes:</p><p><a href="${link}">${link}</a></p><p>If you did not request this, you can ignore this email.</p>`,
-    }).catch((err) => console.error("[halyard] failed to send reset email", err));
+    }).catch((err) => console.error("[kydi] failed to send reset email", err));
   }
   // Always respond identically to avoid account enumeration.
   return success("If an account exists for that email, a reset link is on its way.");

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Halyard design tokens. Conservative business palette: white / light-grey surfaces,
+ * Kydi design tokens. Conservative business palette: white / light-grey surfaces,
  * slate text, thin grey borders, one navy-blue accent. No gradients, no blur, system fonts.
  */
 @theme {

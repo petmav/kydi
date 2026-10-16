@@ -60,7 +60,7 @@ export async function emailDefaults(companyId: number, kind: DocKind, id: number
   const m = await placeholderMap(companyId, kind, id);
   if (!m) return null;
   return {
-    from: process.env.SMTP_FROM || "Halyard <no-reply@halyard.local>",
+    from: process.env.SMTP_FROM || "Kydi <no-reply@kydi.local>",
     to: m.doc.customer.email ?? "",
     cc: "",
     bcc: "",
@@ -76,7 +76,7 @@ function layout(opts: { companyName: string; logoUrl: string | null; body: strin
 <tr><td style="padding:20px 28px;border-bottom:1px solid #e2e8f0">${opts.logoUrl ? `<img src="${opts.logoUrl}" alt="${esc(opts.companyName)}" style="max-height:40px">` : `<strong style="font-size:18px">${esc(opts.companyName)}</strong>`}</td></tr>
 <tr><td style="padding:24px 28px;font-size:14px;line-height:1.6">${opts.body}
 <p style="margin:24px 0"><a href="${opts.link}" style="background:#1d4ed8;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px;display:inline-block;font-weight:600">${esc(opts.buttonLabel)}</a></p></td></tr>
-<tr><td style="padding:14px 28px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b">Sent with Halyard</td></tr>
+<tr><td style="padding:14px 28px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b">Sent with Kydi</td></tr>
 </table></td></tr></table></body></html>`;
 }
 
@@ -101,7 +101,7 @@ export async function sendDocumentEmail(companyId: number, kind: DocKind, id: nu
   const attach = r.m.settings[`${kind}_email_attachment`] === "YES";
   const pdf = attach ? await pdfFor(kind, companyId, id) : null;
   await db.emailLog.create({
-    data: { companyId, from: process.env.SMTP_FROM || "Halyard <no-reply@halyard.local>", to: fields.to, cc: fields.cc || null, bcc: fields.bcc || null, subject: r.subject, body: r.html, mailableType: kind, mailableId: id, token },
+    data: { companyId, from: process.env.SMTP_FROM || "Kydi <no-reply@kydi.local>", to: fields.to, cc: fields.cc || null, bcc: fields.bcc || null, subject: r.subject, body: r.html, mailableType: kind, mailableId: id, token },
   });
   try {
     const res = await sendMail({
@@ -121,7 +121,7 @@ export async function sendDocumentEmail(companyId: number, kind: DocKind, id: nu
     }
     return { ok: true, transport: res.transport };
   } catch (e) {
-    console.error("[halyard] send failed", e);
+    console.error("[kydi] send failed", e);
     return { ok: false, error: `Email could not be sent: ${e instanceof Error ? e.message : "unknown error"}` };
   }
 }
@@ -154,8 +154,8 @@ async function notifyViewed(companyId: number, kind: "invoice" | "estimate", num
   await sendMail({
     to: s.notification_email,
     subject: `${customer} viewed ${kind} ${number}`,
-    html: `<p>${esc(customer)} has viewed ${kind} <strong>${esc(number)}</strong>.</p><p><a href="${url}">Open in Halyard</a></p><p>— Halyard</p>`,
-  }).catch((e) => console.error("[halyard] viewed notification failed", e));
+    html: `<p>${esc(customer)} has viewed ${kind} <strong>${esc(number)}</strong>.</p><p><a href="${url}">Open in Kydi</a></p><p>— Kydi</p>`,
+  }).catch((e) => console.error("[kydi] viewed notification failed", e));
 }
 
 /** Resolves an emailed link token (spec §7.7). */

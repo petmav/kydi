@@ -19,10 +19,10 @@
 #         pattern: "[A-Za-z0-9]{32}"
 #         stable: true
 #     DATABASE_URL:
-#       template: "postgresql://halyard:{{POSTGRES_PASSWORD | urlencode}}@db:5432/halyard?schema=public"
+#       template: "postgresql://kydi:{{POSTGRES_PASSWORD | urlencode}}@db:5432/kydi?schema=public"
 #     APP_URL:
 #       alias: ZENITH_PUBLIC_URL
-#     HALYARD_DEMO_SEED:
+#     KYDI_DEMO_SEED:
 #       input:
 #         description: "Seed demo data on first boot (true/false)"
 #         default: "false"

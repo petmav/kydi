@@ -6,7 +6,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { ALL_ABILITIES, type Ability } from "@/lib/abilities";
 import { getCompanySettings } from "@/lib/settings";
 
-export const COMPANY_COOKIE = "halyard_company";
+export const COMPANY_COOKIE = "kydi_company";
 
 export async function requireUser() {
   const user = await getSessionUser();

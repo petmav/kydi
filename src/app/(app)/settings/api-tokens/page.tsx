@@ -22,7 +22,7 @@ export default async function ApiTokensPage() {
         actions={<CreateTokenButton />}
       />
       {tokens.length === 0 ? (
-        <EmptyState icon={<KeyRound className="h-6 w-6" aria-hidden="true" />} title="No API tokens" description="Create a token to integrate Halyard with other tools." />
+        <EmptyState icon={<KeyRound className="h-6 w-6" aria-hidden="true" />} title="No API tokens" description="Create a token to integrate Kydi with other tools." />
       ) : (
         <Table>
           <thead>
@@ -38,7 +38,7 @@ export default async function ApiTokensPage() {
             {tokens.map((t) => (
               <tr key={t.id}>
                 <Td className="font-medium">{t.name}</Td>
-                <Td className="font-mono text-xs text-muted">hyd_{t.prefix}_••••</Td>
+                <Td className="font-mono text-xs text-muted">kyd_{t.prefix}_••••</Td>
                 <Td className="text-muted">{t.lastUsedAt ? formatDateTime(t.lastUsedAt, tz) : "Never"}</Td>
                 <Td className="text-muted">{t.expiresAt ? formatDateTime(t.expiresAt, tz) : "Never"}</Td>
                 <Td>
@@ -50,7 +50,7 @@ export default async function ApiTokensPage() {
         </Table>
       )}
       <CardBody className="border-t border-line text-sm text-muted">
-        Example: <code className="text-xs">curl -H &quot;Authorization: Bearer hyd_…&quot; -H &quot;company: {ctx.companyId}&quot; /api/v1/customers</code>
+        Example: <code className="text-xs">curl -H &quot;Authorization: Bearer kyd_…&quot; -H &quot;company: {ctx.companyId}&quot; /api/v1/customers</code>
       </CardBody>
     </Card>
   );

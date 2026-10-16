@@ -17,11 +17,11 @@ export default async function MailPage() {
     <Card>
       <CardHeader
         title="Mail configuration"
-        description="Halyard uses the installation's SMTP settings (environment variables)."
+        description="Kydi uses the installation's SMTP settings (environment variables)."
         actions={
           <NewButton label="Send test mail" title="Send a test email" action={sendTestMailAction}>
             <Field name="to" label="To" type="email" required defaultValue={ctx.user.email} />
-            <Field name="subject" label="Subject" required defaultValue="Halyard test email" />
+            <Field name="subject" label="Subject" required defaultValue="Kydi test email" />
             <TextareaField name="message" label="Message" required defaultValue="If you can read this, outgoing email works." />
           </NewButton>
         }

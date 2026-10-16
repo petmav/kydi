@@ -63,7 +63,7 @@ export function ok(data: unknown, status = 200) {
 export function fail(e: unknown) {
   if (e instanceof ApiError) return Response.json({ message: e.message, ...(e.errors ? { errors: e.errors } : {}) }, { status: e.status });
   if (e instanceof SyntaxError) return Response.json({ message: "Malformed JSON body." }, { status: 400 });
-  console.error("[halyard:api]", e);
+  console.error("[kydi:api]", e);
   return Response.json({ message: "Server error." }, { status: 500 });
 }
 

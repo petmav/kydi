@@ -15,7 +15,7 @@ export function LoginForm({ next, demo }: { next?: string; demo?: boolean }) {
         autoComplete="email"
         required
         autoFocus
-        defaultValue={demo ? "admin@halyard.test" : undefined}
+        defaultValue={demo ? "admin@kydi.test" : undefined}
       />
       <div>
         <Field

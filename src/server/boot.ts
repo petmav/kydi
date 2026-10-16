@@ -10,13 +10,13 @@ export async function boot() {
     const { seedDemo } = await import("./seed");
     const { seedExtras } = await import("./seed-extras");
     const r = await seedDemo(seedExtras);
-    if (r.created) console.log("[halyard] demo data seeded (admin@halyard.test / password123)");
+    if (r.created) console.log("[kydi] demo data seeded (admin@kydi.test / password123)");
   }
   const first = await runScheduler();
-  console.log("[halyard] scheduler catch-up", JSON.stringify(first));
-  if (process.env.HALYARD_DISABLE_SCHEDULER === "true") return;
+  console.log("[kydi] scheduler catch-up", JSON.stringify(first));
+  if (process.env.KYDI_DISABLE_SCHEDULER === "true") return;
   const timer = setInterval(() => {
-    runScheduler().catch((e) => console.error("[halyard] scheduler tick failed", e));
+    runScheduler().catch((e) => console.error("[kydi] scheduler tick failed", e));
   }, 60_000);
   timer.unref?.();
 }

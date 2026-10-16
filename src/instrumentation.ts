@@ -6,5 +6,5 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.NEXT_PHASE === "phase-production-build") return;
   const { boot } = await import("./server/boot");
-  boot().catch((e) => console.error("[halyard] boot tasks failed", e));
+  boot().catch((e) => console.error("[kydi] boot tasks failed", e));
 }

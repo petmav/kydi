@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 type Variant = "success" | "error" | "info";
 type ToastItem = { id: number; message: string; variant: Variant };
 
-const EVENT = "halyard:toast";
-export const FLASH_CHECK_EVENT = "halyard:flash-check";
-const FLASH_COOKIE = "halyard_flash";
+const EVENT = "kydi:toast";
+export const FLASH_CHECK_EVENT = "kydi:flash-check";
+const FLASH_COOKIE = "kydi_flash";
 
 /** Show a toast from any client component. */
 export function toast(message: string, variant: Variant = "success") {

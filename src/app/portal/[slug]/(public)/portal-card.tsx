@@ -7,7 +7,7 @@ export function PortalCard({ title, subtitle, children }: { title: string; subti
         {subtitle ? <p className="mt-1 text-sm text-muted">{subtitle}</p> : null}
         <div className="mt-6">{children}</div>
       </div>
-      <p className="mt-6 text-xs text-muted">Powered by Halyard</p>
+      <p className="mt-6 text-xs text-muted">Powered by Kydi</p>
     </main>
   );
 }

@@ -15,7 +15,7 @@ export default async function ExchangeRatesPage() {
       <EmptyState
         icon={<ArrowLeftRight className="h-6 w-6" aria-hidden="true" />}
         title="Live exchange-rate providers are not available yet"
-        description="Halyard v1 does not call external rate APIs. Enter the rate on foreign-currency documents; the last rate you used for each currency is suggested automatically next time."
+        description="Kydi v1 does not call external rate APIs. Enter the rate on foreign-currency documents; the last rate you used for each currency is suggested automatically next time."
       />
     </Card>
   );

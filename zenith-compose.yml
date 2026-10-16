@@ -4,12 +4,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: "postgresql://halyard:retired-preview-db-password@db:5432/halyard?schema=public"
+      DATABASE_URL: "postgresql://kydi:retired-preview-db-password@db:5432/kydi?schema=public"
       SESSION_SECRET: "retired-preview-session-secret"
       CRON_SECRET: "retired-preview-cron-secret"
       UPLOAD_DIR: "/data/uploads"
-      HALYARD_DEMO_SEED: "true"
-      SMTP_FROM: "Halyard <no-reply@halyard.local>"
+      KYDI_DEMO_SEED: "true"
+      SMTP_FROM: "Kydi <no-reply@kydi.local>"
     depends_on:
       db:
         condition: service_healthy
@@ -18,13 +18,13 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: halyard
+      POSTGRES_USER: kydi
       POSTGRES_PASSWORD: retired-preview-db-password
-      POSTGRES_DB: halyard
+      POSTGRES_DB: kydi
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U halyard -d halyard"]
+      test: ["CMD-SHELL", "pg_isready -U kydi -d kydi"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -35,14 +35,14 @@ volumes:
 
 x-zenith:
   catalog:
-    name: Halyard
+    name: Kydi
     description: >-
       Self-hosted invoicing for freelancers and small businesses: customers, items,
       estimates, invoices, recurring billing, payments, expenses, reports, PDF
       generation, email delivery and a customer portal.
     authors: ["pmavr"]
     tags: [invoicing, finance, business, saas]
-    source: https://github.com/pmavr/halyard
+    source: https://github.com/petmav/kydi
     license: MIT
   expose:
     - service: app

@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-export const FLASH_COOKIE = "halyard_flash";
+export const FLASH_COOKIE = "kydi_flash";
 
 /** Queue a toast to display after the next navigation (used before redirect()). */
 export async function setFlash(message: string, variant: "success" | "error" | "info" = "success") {

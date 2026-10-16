@@ -3,7 +3,7 @@ import { cache } from "react";
 import { db } from "@/lib/db";
 import { randomToken, sha256, signValue, unsignValue } from "@/lib/auth/tokens";
 
-export const SESSION_COOKIE = "halyard_session";
+export const SESSION_COOKIE = "kydi_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
 export async function isSecureRequest(): Promise<boolean> {

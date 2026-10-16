@@ -8,7 +8,7 @@ import type { CompanyContext } from "@/lib/auth/context";
 import { saveInvoice, markInvoiceSent } from "./invoices";
 import { saveEstimate, setEstimateStatus } from "./estimates";
 
-export const DEMO_EMAIL = "admin@halyard.test";
+export const DEMO_EMAIL = "admin@kydi.test";
 export const DEMO_PASSWORD = "password123";
 
 type Ctx = CompanyContext;

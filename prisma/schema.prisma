@@ -1,4 +1,4 @@
-// Halyard data model.
+// Kydi data model.
 // Money: signed 64-bit integers of minor units (major x 100). Quantities, percents and
 // exchange rates are doubles rounded by the domain layer (2 / 2 / 6 decimals).
 
