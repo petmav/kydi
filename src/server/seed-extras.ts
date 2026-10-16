@@ -62,7 +62,7 @@ export async function seedExtras(ctx: CompanyContext, refs: SeedRefs): Promise<v
   ];
   for (const [cat, amount, daysAgo, notes] of spend) {
     const c = cats.find((x) => x.name === cat)!;
+    const r = await saveExpense(ctx, null, { expenseDate: addDaysIso(refs.today, -daysAgo), expenseNumber: null, categoryId: c.id, amount, currency: ctx.settings.currency, exchangeRate: 1, customerId: null, paymentMethodId: methods[2]?.id ?? null, notes, taxes: cat === "Office supplies" ? [{ taxTypeId: refs.taxes.input, amount: Math.round(amount / 6) }] : [], removeReceipt: false, minor: true }, null, {});
     if (!r.ok) throw new Error("seed expense failed: " + r.error);
-    if (!r.ok) throw new Error();
   }
 }
