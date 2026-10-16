@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Button, type ButtonSize, type ButtonVariant } from "@/components/ui/button";
 import { Form, SubmitButton, type FormAction } from "@/components/form";
@@ -38,6 +39,9 @@ export function ModalForm({
   const [key, setKey] = useState(0);
   const router = useRouter();
   const titleId = useId();
+  useEffect(() => {
+    if (open && ref.current && !ref.current.open) ref.current.showModal();
+  }, [open, key]);
 
   return (
     <>
@@ -49,11 +53,11 @@ export function ModalForm({
         onClick={() => {
           setKey((k) => k + 1);
           setOpen(true);
-          ref.current?.showModal();
         }}
       >
         {trigger}
       </Button>
+      {open ? createPortal(
       <dialog
         ref={ref}
         onClose={() => setOpen(false)}
@@ -98,7 +102,9 @@ export function ModalForm({
             </div>
           </Form>
         ) : null}
-      </dialog>
+      </dialog>,
+      document.body,
+      ) : null}
     </>
   );
 }
