@@ -19,6 +19,7 @@ export function settingsNavItems(ctx: CompanyContext) {
     { href: "/settings/ownership", label: "Transfer ownership", show: ctx.isOwner },
     { href: "/settings/api-tokens", label: "API tokens", show: true },
     { href: "/settings/portal", label: "Customer portal", show: ctx.isOwner },
+    { href: "/settings/online-payments", label: "Online payments", show: ctx.isOwner },
   ];
   return items.filter((i) => i.show).map(({ href, label }) => ({ href, label }));
 }

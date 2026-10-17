@@ -18,24 +18,24 @@ enum UserRole {
 }
 
 model User {
-  id            Int       @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   name          String
-  email         String    @unique
+  email         String   @unique
   phone         String?
   passwordHash  String
-  role          UserRole  @default(USER)
-  settings      Json      @default("{}")
+  role          UserRole @default(USER)
+  settings      Json     @default("{}")
   /// Storage-relative path of the profile photo (spec §2.6), served by /api/files/avatar/[id].
   avatarPath    String?
   lastCompanyId Int?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  memberships   CompanyUser[]
-  sessions      Session[]
-  resetTokens   PasswordResetToken[]
-  ownedCompanies Company[] @relation("CompanyOwner")
-  apiTokens     ApiToken[]
+  memberships    CompanyUser[]
+  sessions       Session[]
+  resetTokens    PasswordResetToken[]
+  ownedCompanies Company[]            @relation("CompanyOwner")
+  apiTokens      ApiToken[]
 }
 
 model Session {
@@ -97,28 +97,30 @@ model Company {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  owner      User     @relation("CompanyOwner", fields: [ownerId], references: [id])
-  members    CompanyUser[]
-  roles      Role[]
-  settings   CompanySetting[]
-  invitations Invitation[]
-  customers  Customer[]
-  units      Unit[]
-  items      Item[]
-  taxTypes   TaxType[]
-  invoices   Invoice[]
-  estimates  Estimate[]
-  recurringInvoices RecurringInvoice[]
-  payments   Payment[]
-  paymentMethods PaymentMethod[]
-  expenses   Expense[]
-  expenseCategories ExpenseCategory[]
-  customFields CustomField[]
-  notes      Note[]
-  exchangeRateLogs ExchangeRateLog[]
-  emailLogs  EmailLog[]
-  mailConfig MailConfig?
+  owner                 User                   @relation("CompanyOwner", fields: [ownerId], references: [id])
+  members               CompanyUser[]
+  roles                 Role[]
+  settings              CompanySetting[]
+  invitations           Invitation[]
+  customers             Customer[]
+  units                 Unit[]
+  items                 Item[]
+  taxTypes              TaxType[]
+  invoices              Invoice[]
+  estimates             Estimate[]
+  recurringInvoices     RecurringInvoice[]
+  payments              Payment[]
+  paymentMethods        PaymentMethod[]
+  expenses              Expense[]
+  expenseCategories     ExpenseCategory[]
+  customFields          CustomField[]
+  notes                 Note[]
+  exchangeRateLogs      ExchangeRateLog[]
+  emailLogs             EmailLog[]
+  mailConfig            MailConfig?
   exchangeRateProviders ExchangeRateProvider[]
+  paymentGateway        PaymentGateway?
+  onlinePayments        OnlinePayment[]
 }
 
 model CompanySetting {
@@ -132,16 +134,16 @@ model CompanySetting {
 }
 
 model Role {
-  id        Int      @id @default(autoincrement())
-  companyId Int
-  name      String
-  title     String
-  abilities String[]
-  isOwner   Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  members   CompanyUser[]
+  id          Int           @id @default(autoincrement())
+  companyId   Int
+  name        String
+  title       String
+  abilities   String[]
+  isOwner     Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  members     CompanyUser[]
   invitations Invitation[]
 
   @@unique([companyId, name])
@@ -186,7 +188,7 @@ model Invitation {
 }
 
 model Customer {
-  id                 Int      @id @default(autoincrement())
+  id                 Int                @id @default(autoincrement())
   companyId          Int
   creatorId          Int?
   name               String
@@ -198,7 +200,7 @@ model Customer {
   prefix             String?
   taxId              String?
   currency           String
-  enablePortal       Boolean  @default(false)
+  enablePortal       Boolean            @default(false)
   portalPasswordHash String?
   billingName        String?
   billingStreet1     String?
@@ -216,15 +218,16 @@ model Customer {
   shippingCountry    String?
   shippingZip        String?
   shippingPhone      String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  company            Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   invoices           Invoice[]
   estimates          Estimate[]
   recurringInvoices  RecurringInvoice[]
   payments           Payment[]
   expenses           Expense[]
   portalSessions     PortalSession[]
+  onlinePayments     OnlinePayment[]
 
   @@unique([companyId, email])
   @@index([companyId, name])
@@ -261,17 +264,17 @@ model Unit {
 }
 
 model Item {
-  id          Int       @id @default(autoincrement())
+  id          Int        @id @default(autoincrement())
   companyId   Int
   creatorId   Int?
   name        String
   description String?
   price       BigInt
   unitId      Int?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  unit        Unit?     @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit        Unit?      @relation(fields: [unitId], references: [id], onDelete: Restrict)
   taxes       ItemTax[]
   lines       LineItem[]
 
@@ -342,57 +345,58 @@ enum DiscountType {
 }
 
 model Invoice {
-  id                     Int           @id @default(autoincrement())
+  id                     Int                 @id @default(autoincrement())
   companyId              Int
   creatorId              Int?
   customerId             Int
-  type                   InvoiceType   @default(INVOICE)
+  type                   InvoiceType         @default(INVOICE)
   invoiceNumber          String
   sequenceNumber         Int
   customerSequenceNumber Int
   referenceNumber        String?
-  invoiceDate            DateTime      @db.Date
+  invoiceDate            DateTime            @db.Date
   /// "HH:MM" when the company setting invoice_use_time is YES (spec §3.2).
   invoiceTime            String?
-  dueDate                DateTime?     @db.Date
+  dueDate                DateTime?           @db.Date
   currency               String
-  exchangeRate           Float         @default(1)
-  status                 InvoiceStatus @default(DRAFT)
-  paidStatus             PaidStatus    @default(UNPAID)
-  overdue                Boolean       @default(false)
-  sent                   Boolean       @default(false)
-  viewed                 Boolean       @default(false)
-  taxPerItem             Boolean       @default(false)
-  discountPerItem        Boolean       @default(false)
-  taxIncluded            Boolean       @default(false)
-  discountType           DiscountType  @default(FIXED)
-  discount               Float         @default(0)
-  discountVal            BigInt        @default(0)
-  subTotal               BigInt        @default(0)
-  tax                    BigInt        @default(0)
-  total                  BigInt        @default(0)
-  dueAmount              BigInt        @default(0)
-  baseSubTotal           BigInt        @default(0)
-  baseDiscountVal        BigInt        @default(0)
-  baseTax                BigInt        @default(0)
-  baseTotal              BigInt        @default(0)
-  baseDueAmount          BigInt        @default(0)
+  exchangeRate           Float               @default(1)
+  status                 InvoiceStatus       @default(DRAFT)
+  paidStatus             PaidStatus          @default(UNPAID)
+  overdue                Boolean             @default(false)
+  sent                   Boolean             @default(false)
+  viewed                 Boolean             @default(false)
+  taxPerItem             Boolean             @default(false)
+  discountPerItem        Boolean             @default(false)
+  taxIncluded            Boolean             @default(false)
+  discountType           DiscountType        @default(FIXED)
+  discount               Float               @default(0)
+  discountVal            BigInt              @default(0)
+  subTotal               BigInt              @default(0)
+  tax                    BigInt              @default(0)
+  total                  BigInt              @default(0)
+  dueAmount              BigInt              @default(0)
+  baseSubTotal           BigInt              @default(0)
+  baseDiscountVal        BigInt              @default(0)
+  baseTax                BigInt              @default(0)
+  baseTotal              BigInt              @default(0)
+  baseDueAmount          BigInt              @default(0)
   notes                  String?
-  templateName           String        @default("invoice1")
+  templateName           String              @default("invoice1")
   recurringInvoiceId     Int?
   relatedInvoiceId       Int?
   creditReason           String?
-  uniqueHash             String        @unique
-  createdAt              DateTime      @default(now())
-  updatedAt              DateTime      @updatedAt
-  company                Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer               Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  recurringInvoice       RecurringInvoice? @relation(fields: [recurringInvoiceId], references: [id], onDelete: SetNull)
-  relatedInvoice         Invoice?      @relation("CreditNotes", fields: [relatedInvoiceId], references: [id], onDelete: SetNull)
-  creditNotes            Invoice[]     @relation("CreditNotes")
+  uniqueHash             String              @unique
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  company                Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer               Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  recurringInvoice       RecurringInvoice?   @relation(fields: [recurringInvoiceId], references: [id], onDelete: SetNull)
+  relatedInvoice         Invoice?            @relation("CreditNotes", fields: [relatedInvoiceId], references: [id], onDelete: SetNull)
+  creditNotes            Invoice[]           @relation("CreditNotes")
   lines                  LineItem[]
   taxes                  AppliedTax[]
   allocations            PaymentAllocation[]
+  onlinePayments         OnlinePayment[]
 
   @@unique([companyId, invoiceNumber])
   @@index([companyId, type, status])
@@ -593,27 +597,28 @@ model PaymentMethod {
 }
 
 model Payment {
-  id                     Int            @id @default(autoincrement())
+  id                     Int                 @id @default(autoincrement())
   companyId              Int
   creatorId              Int?
   customerId             Int
   paymentNumber          String
   sequenceNumber         Int
   customerSequenceNumber Int
-  paymentDate            DateTime       @db.Date
+  paymentDate            DateTime            @db.Date
   amount                 BigInt
   currency               String
-  exchangeRate           Float          @default(1)
+  exchangeRate           Float               @default(1)
   baseAmount             BigInt
   paymentMethodId        Int?
   notes                  String?
-  uniqueHash             String         @unique
-  createdAt              DateTime       @default(now())
-  updatedAt              DateTime       @updatedAt
-  company                Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer               Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  paymentMethod          PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  uniqueHash             String              @unique
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  company                Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer               Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  paymentMethod          PaymentMethod?      @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
   allocations            PaymentAllocation[]
+  onlinePayment          OnlinePayment?
 
   @@unique([companyId, paymentNumber])
   @@index([customerId])
@@ -684,7 +689,7 @@ model ExpenseTax {
 }
 
 model CustomField {
-  id            Int      @id @default(autoincrement())
+  id            Int                @id @default(autoincrement())
   companyId     Int
   name          String
   label         String
@@ -694,13 +699,13 @@ model CustomField {
   placeholder   String?
   options       String[]
   defaultAnswer String?
-  isRequired    Boolean  @default(false)
-  order         Int      @default(0)
-  placement     String   @default("internal")
+  isRequired    Boolean            @default(false)
+  order         Int                @default(0)
+  placement     String             @default("internal")
   validation    Json?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  company       Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   values        CustomFieldValue[]
 
   @@unique([companyId, slug])
@@ -807,4 +812,46 @@ model ExchangeRateProvider {
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId, active])
+}
+
+/// Online payment gateway for the customer portal ("stripe" or "demo"). Secrets are AES-256-GCM encrypted JSON
+/// (secretKey, webhookSecret) and never sent to the browser.
+model PaymentGateway {
+  id        Int      @id @default(autoincrement())
+  companyId Int      @unique
+  enabled   Boolean  @default(true)
+  driver    String
+  /// Non-secret fields, e.g. { "publishableKey": "pk_..." }.
+  options   Json     @default("{}")
+  secrets   String?
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+enum OnlinePaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+}
+
+/// One checkout attempt from the portal. providerRef is the idempotency key: a PAID row has exactly one Payment.
+model OnlinePayment {
+  id          Int                 @id @default(autoincrement())
+  companyId   Int
+  customerId  Int
+  invoiceId   Int
+  driver      String
+  providerRef String              @unique
+  amount      BigInt
+  currency    String
+  status      OnlinePaymentStatus @default(PENDING)
+  paymentId   Int?                @unique
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoice     Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  payment     Payment?            @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
 }

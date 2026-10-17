@@ -13,6 +13,7 @@ import { sendCompanyMail } from "@/server/mailer";
 import { getBaseUrl } from "@/lib/url";
 import { setFlash } from "@/lib/flash";
 import { estimateTransitions } from "@/domain/status";
+import { completeDemoCheckout, startCheckout } from "@/server/online-payments";
 
 const loginSchema = z.object({ email: zEmail, password: z.string().min(1, "Enter your password.") });
 
@@ -107,4 +108,23 @@ export async function portalProfileAction(slug: string, _prev: ActionState, form
   await db.customer.update({ where: { id: customer.id }, data: { ...data, ...(password ? { portalPasswordHash: await hashPassword(password) } : {}) } });
   revalidatePath(`/portal/${slug}`, "layout");
   return success("Profile updated.");
+}
+
+/** Starts paying an invoice's full outstanding balance (Stripe Checkout or the demo gateway). */
+export async function portalPayInvoiceAction(slug: string, invoiceId: number): Promise<ActionState> {
+  const { customer } = await requirePortalCustomer(slug);
+  if (!rateLimit(`portal-pay:${customer.id}`, 10, 60_000).ok) return failure("Too many attempts. Please wait a minute.");
+  const r = await startCheckout(slug, customer, invoiceId);
+  if (!r.ok) return failure(r.error);
+  redirect(r.url);
+}
+
+/** Demo gateway "Pay" button: records the payment without moving money. */
+export async function portalDemoPayAction(slug: string, ref: string): Promise<ActionState> {
+  const { customer } = await requirePortalCustomer(slug);
+  const r = await completeDemoCheckout(customer, ref);
+  if (!r.ok) return failure(r.error);
+  revalidatePath(`/portal/${slug}`, "layout");
+  await setFlash("Payment received. Thank you!");
+  redirect(`/portal/${slug}/invoices/${r.invoiceId}`);
 }

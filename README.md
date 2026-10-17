@@ -68,6 +68,14 @@ previews on [Zenith Hosting](https://zenith.hosting).
   modules registry, and a system page describing fixed behaviour (PDF engine, storage, backups, currencies).
 - **Customer portal** at `/portal/<company-slug>`: separate login and sessions, invoices, estimates (accept or
   reject), payments, profile.
+- **Online payments** (Settings > Online payments, owner only): portal customers pay an invoice's full outstanding
+  balance with a "Pay" button through Stripe Checkout (restricted API key and webhook signing secret encrypted at
+  rest; REST API called without the Stripe SDK, API version pinned to `2026-08-26.dahlia`). A confirmed checkout
+  becomes a payment ("Online (Stripe)") allocated to the invoice, and the notification email is told. Sessions are
+  re-read from Stripe on the return URL and on the signature-checked webhook `POST /api/payments/stripe/{companyId}`;
+  each checkout is recorded at most once. A demo gateway that simulates a card payment exists for development and
+  demo-seeded installs only (the demo seed turns it on); production installs never accept it. See
+  [Accepting payments with Stripe](#accepting-payments-with-stripe).
 - **REST API** under `/api/v1` (see below).
 - Out of scope for v1 and shown as labelled pages: purchasing (suppliers, bills), module marketplace, backups,
   file disks, self-updater.
@@ -83,6 +91,9 @@ Not built yet (planned, in this order):
 - Administration: impersonation ("log in as"), backups, remote file disks, currency editing and PDF page setup
   are not implemented (optional per the spec). Profile photos are shown as a square crop but not re-encoded.
 - PDFs embed DejaVu Sans, which has no CJK glyphs, and right-to-left scripts (Arabic, Hebrew) are not shaped.
+- Online payments: no partial or multi-invoice payments; refunds made in Stripe are not synced back (record a
+  credit note in Kydi); one Stripe account per company with pasted keys (a hosted multi-tenant service would use
+  Stripe Connect instead).
 - Purchasing module (suppliers, bills, supplier payments, credits, refunds, recurring costs, purchases report).
 - End-to-end smoke test suite.
 
@@ -125,6 +136,29 @@ with a health check and a named volume). The container runs `prisma migrate depl
 server on `0.0.0.0:3000` as a non-root user. Uploads live on the `app-data` volume at `/data/uploads`. With
 `KYDI_DEMO_SEED=true` (the preview default) demo data is created on first boot.
 `zenith-compose.publish.example.yml` shows the publish-time `x-zenith.env` block.
+
+## Accepting payments with Stripe
+
+Each company connects its own Stripe account under **Settings → Online payments** (owner only).
+
+1. **Restricted key.** In the Stripe Dashboard (use a [sandbox](https://docs.stripe.com/sandboxes) for testing),
+   go to Developers → API keys → Create restricted key → *Custom permissions*, and grant only
+   **Checkout Sessions: Write** and **Balance: Read**.
+2. **Webhook (required).** Developers → Webhooks → Add endpoint
+   `https://<APP_URL host>/api/payments/stripe/<companyId>` (the settings page shows the exact URL) with the events
+   `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`
+   and `checkout.session.expired`. Copy the endpoint's signing secret (`whsec_…`).
+   Locally: `stripe login`, then
+   `stripe listen --forward-to localhost:3000/api/payments/stripe/<companyId> --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired`
+   and use the `whsec_…` it prints.
+3. **Kydi.** Choose *Stripe Checkout*, paste both values, save, then **Test connection**. The banner shows whether
+   the key is in test or live mode.
+4. **Go live.** Repeat 1–3 with live-mode keys and a live webhook endpoint; set `APP_URL` to the public HTTPS URL
+   (the Zenith publish manifest aliases it to `ZENITH_PUBLIC_URL`); keep `SESSION_SECRET` stable (changing it makes
+   stored keys unreadable); choose payment methods in the Stripe Dashboard (Kydi does not hard-code them); review
+   Stripe's [go-live checklist](https://docs.stripe.com/get-started/checklist/go-live).
+
+Test cards: `4242 4242 4242 4242` (success), `4000 0000 0000 0002` (declined), any future expiry and CVC.
 
 ## Demo credentials
 
