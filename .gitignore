@@ -31,3 +31,9 @@ coverage
 *.pem
 .DS_Store
 .vercel
+
+# local scratch output (never commit)
+.smoke/
+*.tmp.mjs
+playwright-report/
+test-results/

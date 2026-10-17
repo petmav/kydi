@@ -1,0 +1,58 @@
+# Kydi - Zenith PREVIEW manifest (for `zenith check` / `zenith up` only; never published).
+#
+# The preview policy allows literal inline values only and forbids x-zenith.env / x-zenith.storage and
+# resource overrides, so this file differs from the publish manifest (zenith-compose.yml). Run it with
+#   npm run zenith:preview            # swaps this file in, runs `zenith check --upload-size`, restores
+#   npm run zenith:preview -- --up    # same, then `zenith up` (needs `zenith auth login`)
+# The database password below is preview-only and the database is not exposed. SESSION_SECRET and
+# APP_ENCRYPTION_KEY are NOT stored here: `--up` generates them into the gitignored .env.local, which
+# `zenith up` sends to the preview as secrets. Demo data is on for previews.
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://kydi:kydi-preview-only-db-password@db:5432/kydi?schema=public"
+      UPLOAD_DIR: "/data/uploads"
+      KYDI_DEMO_SEED: "true"
+      SMTP_FROM: "Kydi <no-reply@kydi.local>"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - app-data:/data
+  db:
+    image: postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+    environment:
+      POSTGRES_USER: kydi
+      POSTGRES_PASSWORD: kydi-preview-only-db-password
+      POSTGRES_DB: kydi
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kydi -d kydi"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  app-data: {}
+  db-data: {}
+
+x-zenith:
+  catalog:
+    name: Kydi
+    description: >-
+      Self-hosted invoicing for freelancers and small businesses: customers, items, estimates, invoices,
+      recurring billing, payments, expenses, purchasing, reports, PDF generation, email delivery and a
+      customer portal.
+    authors: ["pmavr"]
+    tags: [invoicing, finance, business, accounting, billing]
+    source: https://github.com/petmav/kydi
+    license: MIT
+  expose:
+    - service: app
+      port: 3000
+      web: true

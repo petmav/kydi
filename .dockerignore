@@ -1,3 +1,4 @@
+# Never sent to the image build (also excluded from `zenith up` uploads).
 node_modules
 .next
 .git
@@ -10,9 +11,15 @@ coverage
 uploads
 data
 *.log
+*.tsbuildinfo
 *.md
 !README.md
 docker-compose.dev.yml
-zenith-compose.publish.example.yml
+zenith-compose.preview.yml
+listing.json
+publish
+scripts/zenith-preview.mjs
+e2e
+.smoke
 .vscode
 .idea

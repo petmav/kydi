@@ -1,33 +1,74 @@
+# Kydi - Zenith Hosting PUBLISH manifest (read by `zenith publish` from the pinned commit).
+#
+# Every secret is generated per deployment by Zenith (x-zenith.env); nothing secret is stored in this file.
+# The preview policy used by `zenith check` / `zenith up` forbids x-zenith.env and x-zenith.storage, so
+# previews use zenith-compose.preview.yml through `npm run zenith:preview` (see PUBLISHING.md).
+
 services:
   app:
     build: .
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: "postgresql://kydi:retired-preview-db-password@db:5432/kydi?schema=public"
-      SESSION_SECRET: "retired-preview-session-secret"
-      CRON_SECRET: "retired-preview-cron-secret"
-      UPLOAD_DIR: "/data/uploads"
-      KYDI_DEMO_SEED: "true"
-      SMTP_FROM: "Kydi <no-reply@kydi.local>"
+      UPLOAD_DIR: /data/uploads
+      KYDI_TRUST_PROXY_HOPS: "1"
+    user: "1001:1001"
+    read_only: true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    volumes:
+      - app-data:/data
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - app-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "4", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    deploy:
+      # One replica: rate limits are per process and the scheduler is guarded by an advisory lock anyway.
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+        reservations:
+          memory: 256M
+
   db:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine3.24@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     environment:
       POSTGRES_USER: kydi
-      POSTGRES_PASSWORD: retired-preview-db-password
       POSTGRES_DB: kydi
+      PGDATA: /var/lib/postgresql/data/pgdata
+    user: "70:70"
+    read_only: true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kydi -d kydi"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 30s
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          memory: 128M
 
 volumes:
   app-data: {}
@@ -37,14 +78,118 @@ x-zenith:
   catalog:
     name: Kydi
     description: >-
-      Self-hosted invoicing for freelancers and small businesses: customers, items,
-      estimates, invoices, recurring billing, payments, expenses, reports, PDF
-      generation, email delivery and a customer portal.
+      Self-hosted invoicing for freelancers and small businesses: customers, items, estimates, invoices,
+      recurring billing, payments, expenses, purchasing, reports, PDF generation, email delivery and a
+      customer portal.
+    detail: >-
+      Kydi covers the full billing loop: customers and items, estimates that convert to invoices, credit
+      notes, recurring invoices on cron-style schedules, payments allocated across invoices, expenses with
+      receipts, suppliers and bills, and reports (sales, expenses, profit and loss, tax summary, purchases)
+      with PDF export. Documents are rendered as PDFs without a headless browser, sent by email with an
+      expiring viewer link, and visible to customers in a separate portal. Multiple companies, roles and
+      abilities, a REST API with personal tokens, and an administration area are included. The first
+      administrator is reserved for the deployment owner.
     authors: ["pmavr"]
-    tags: [invoicing, finance, business, saas]
+    tags: [invoicing, finance, business, accounting, billing]
     source: https://github.com/petmav/kydi
     license: MIT
   expose:
     - service: app
       port: 3000
       web: true
+  storage:
+    uploads:
+      volume: app-data
+      label: Uploaded files
+      description: Company logos, profile photos and expense receipts (private; served only to authorised users).
+      public: false
+  env:
+    # ---- generated per deployment, stable for its lifetime --------------------------------------------
+    POSTGRES_PASSWORD:
+      generate: '[A-Za-z0-9]{40}'
+      input:
+        label: Database password
+        description: Generated for this deployment. Used by the app and database services only.
+        secret: true
+    SESSION_SECRET:
+      generate: '[A-Za-z0-9]{64}'
+      services: [app]
+      input:
+        label: Session secret
+        description: Signs session cookies. Changing it signs everybody out; stored credentials are not affected.
+        secret: true
+    APP_ENCRYPTION_KEY:
+      generate: '[A-Za-z0-9]{64}'
+      services: [app]
+      input:
+        label: Encryption key
+        description: Encrypts stored mail and exchange-rate credentials. Never change it after the first start.
+        secret: true
+    CRON_SECRET:
+      generate: '[A-Za-z0-9]{48}'
+      services: [app]
+      input:
+        label: Cron secret
+        description: Bearer secret for the optional external trigger GET /api/cron/recurring.
+        secret: true
+    # ---- derived ---------------------------------------------------------------------------------------
+    DATABASE_PASSWORD_URLENCODED:
+      alias: POSTGRES_PASSWORD
+      transform: urlencode
+      services: [app]
+    DATABASE_URL:
+      template: 'postgresql://kydi:{DATABASE_PASSWORD_URLENCODED}@db:5432/kydi?schema=public'
+      services: [app]
+    APP_URL:
+      alias: ZENITH_PUBLIC_URL
+      services: [app]
+    KYDI_OWNER_EMAIL:
+      alias: ZENITH_OWNER_EMAIL
+      services: [app]
+    SMTP_HOST:
+      alias: ZENITH_SMTP_HOST
+      services: [app]
+    SMTP_PORT:
+      alias: ZENITH_SMTP_PORT
+      services: [app]
+    SMTP_USER:
+      alias: ZENITH_SMTP_USER
+      services: [app]
+    SMTP_PASS:
+      alias: ZENITH_SMTP_PASS
+      services: [app]
+    SMTP_FROM:
+      alias: ZENITH_SMTP_FROM
+      services: [app]
+    SMTP_FROM_NAME:
+      alias: ZENITH_SMTP_DISPLAY
+      services: [app]
+    # ---- optional settings -----------------------------------------------------------------------------
+    KYDI_DEMO_SEED:
+      services: [app]
+      input:
+        label: Demo data
+        description: '"true" creates demo data with a publicly known password on an empty database. Leave "false" for real use.'
+        default: 'false'
+        validator: '^(true|false)$'
+    KYDI_INSTALL_REQUIRE_TOKEN:
+      services: [app]
+      input:
+        label: Require install token
+        description: '"true" also requires the one-time install token from the log when the owner email is known.'
+        default: 'false'
+        validator: '^(true|false)$'
+    KYDI_LOG_FORMAT:
+      services: [app]
+      input:
+        label: Log format
+        description: '"text" or "json" (one JSON object per line).'
+        default: 'text'
+        validator: '^(text|json)$'
+    KYDI_DISABLE_SCHEDULER:
+      services: [app]
+      input:
+        label: Disable in-process scheduler
+        description: '"true" stops the minute timer; use an external call to /api/cron/recurring instead.'
+        default: 'false'
+        validator: '^(true|false)$'

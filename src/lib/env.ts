@@ -65,9 +65,12 @@ export const env = {
   get demoSeed(): boolean {
     return process.env.KYDI_DEMO_SEED === "true";
   },
-  /** Email of the deploying account (Zenith built-in ZENITH_OWNER_EMAIL). Binds the install wizard when set. */
+  /**
+   * Email of the deploying account (KYDI_OWNER_EMAIL, which the manifest aliases to Zenith's built-in
+   * ZENITH_OWNER_EMAIL; ZENITH_OWNER_EMAIL itself is also read). Binds the install wizard when set.
+   */
   get ownerEmail(): string | undefined {
-    const e = trimmed("ZENITH_OWNER_EMAIL")?.toLowerCase();
+    const e = (trimmed("KYDI_OWNER_EMAIL") ?? trimmed("ZENITH_OWNER_EMAIL"))?.toLowerCase();
     return e && e.includes("@") ? e : undefined;
   },
   /** Require the boot-time install token even when ZENITH_OWNER_EMAIL is set. */
