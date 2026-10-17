@@ -30,3 +30,19 @@ describe("install wizard after installation", () => {
     }
   });
 });
+
+describe("scheduler retention sweep and cron secret", () => {
+  it("rejects a wrong cron secret and purges expired sessions on a run", async () => {
+    const secret = process.env.CRON_SECRET;
+    if (!secret) return; // route disabled without CRON_SECRET
+    expect((await fetch(`${BASE}/api/cron/recurring`, { headers: { Authorization: "Bearer wrong" } })).status).toBe(401);
+    const user = await db.user.findFirstOrThrow();
+    const hash = `expired-${Date.now()}-${Math.random()}`;
+    await db.session.create({ data: { tokenHash: hash, userId: user.id, expiresAt: new Date(Date.now() - 60_000) } });
+    const res = await fetch(`${BASE}/api/cron/recurring`, { method: "POST", headers: { Authorization: `Bearer ${secret}` } });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; skipped?: boolean };
+    expect(body.ok).toBe(true);
+    if (!body.skipped) expect(await db.session.count({ where: { tokenHash: hash } })).toBe(0);
+  });
+});

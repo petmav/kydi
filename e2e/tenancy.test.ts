@@ -63,7 +63,7 @@ beforeAll(async () => {
   ids.payment = Number(pay.json.data?.id);
   const category = await db.expenseCategory.create({ data: { companyId: B.companyId, name: "Travel" } });
   const receiptPath = await storeFile(`receipts/${B.companyId}`, "receipt.pdf", Buffer.from("%PDF-1.4\n% tenant B receipt\n"));
-  const exp = await db.expense.create({ data: { companyId: B.companyId, expenseDate: new Date(today), categoryId: category.id, amount: 100n, baseAmount: 100n, currency: "USD", receiptPath, receiptName: "b-receipt.pdf", receiptMime: "application/pdf", receiptSize: 30 } });
+  const exp = await db.expense.create({ data: { companyId: B.companyId, expenseDate: new Date(today), categoryId: category.id, amount: BigInt(100), baseAmount: BigInt(100), currency: "USD", receiptPath, receiptName: "b-receipt.pdf", receiptMime: "application/pdf", receiptSize: 30 } });
   ids.expense = exp.id;
   const avatarPath = await storeFile(`avatars/${B.userId}`, "avatar.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]));
   await db.user.update({ where: { id: B.userId }, data: { avatarPath } });

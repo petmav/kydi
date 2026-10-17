@@ -30,7 +30,7 @@ export async function boot() {
 
   const userCount = await db.user.count();
   const policy = installPolicy();
-  const installMode = userCount > 0 ? "complete" : policy.ownerEmail ? (policy.requireToken ? "owner email + token" : "owner email") : policy.requireToken ? "install token" : "open (development)";
+  const installMode = userCount > 0 ? "complete" : env.demoSeed ? "skipped (demo data)" : policy.ownerEmail ? (policy.requireToken ? "owner email + token" : "owner email") : policy.requireToken ? "install token" : "open (development)";
   banner(installMode);
 
   // One-off boot tasks run under an advisory lock so concurrent boots cannot race.

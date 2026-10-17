@@ -54,6 +54,19 @@ for (const p of pages) {
   const status = res?.status() ?? 0;
   console.log(`${status} ${p}`);
   if (status >= 400) problems.push(`${p}: HTTP ${status}`);
+  // Accessibility spot check: every visible form control needs an accessible name.
+  const unlabeled = await page.evaluate(() =>
+    [...document.querySelectorAll("input, select, textarea, [contenteditable='true']")]
+      .filter((el) => {
+        const e = /** @type {HTMLElement} */ (el);
+        if (e.getAttribute("type") === "hidden" || e.closest("[hidden],[aria-hidden='true']") || e.offsetParent === null) return false;
+        const id = e.getAttribute("id");
+        const byFor = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+        return !(e.getAttribute("aria-label") || e.getAttribute("aria-labelledby") || e.closest("label") || byFor || e.getAttribute("title"));
+      })
+      .map((e) => `${e.tagName.toLowerCase()}[name=${e.getAttribute("name") ?? ""}]`),
+  );
+  if (unlabeled.length) problems.push(`${p}: unlabeled controls ${unlabeled.join(", ")}`);
 }
 
 await browser.close();

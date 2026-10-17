@@ -306,7 +306,9 @@ export async function runScheduler(now = new Date()) {
       const { runDueRecurringCosts } = await import("./purchasing");
       const costs = await runDueRecurringCosts(now);
       const sweeps = await runSweeps(now);
-      return { skipped: false, generated, costs, ...sweeps };
+      const { purgeExpiredAuthRecords } = await import("./retention");
+      const purged = await purgeExpiredAuthRecords(now);
+      return { skipped: false, generated, costs, ...sweeps, purged };
     });
     return r.acquired ? r.result : { skipped: true, reason: "another process holds the scheduler lock" };
   } finally {
