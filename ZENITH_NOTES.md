@@ -57,9 +57,31 @@ x-zenith:
 - Preview lifetime: 20 min from ready; one live preview per account
 - Upload: <=100 MiB compressed / 200 MiB expanded; follows .gitignore/.dockerignore; node_modules excluded
 
-## Publish-only extras (add later, not in preview manifest)
-- `x-zenith.env`: declarations with `input` / `generate` (RE2 pattern, stable) / `template` / `alias`; `transform: argon2id|urlencode`
-- Built-ins must be declared to be used: `ZENITH_PUBLIC_URL`, `ZENITH_PUBLIC_HOST`, `ZENITH_OWNER_EMAIL`, `ZENITH_SMTP_*`
-- `x-zenith.storage`: map stable id -> named volume (`public: true` only for owner-browsable files, never DB)
-- Rejected always: bind mounts, `include`, `extends`, `env_file`, `label_file`, file-backed configs/secrets, `privileged: true`
-- `user:` numeric ids only; `depends_on` long form with `condition: service_healthy` is the only startup wait
+## Publish-only extras (implemented in zenith-compose.yml; never in the preview manifest)
+
+Corrections confirmed on 2026-10-17 against https://docs.zenith.hosting/content/zenith-compose-reference.md and the
+CLI 0.1.5 schema (`lint/compose.schema.json`):
+
+- `x-zenith.env.<NAME>` needs `input` or exactly one of `generate` / `template` / `alias`; a bare string is an
+  alias. `generate` is the RE2 pattern string itself (`generate: '[A-Za-z0-9]{64}'`); there is no `stable` key
+  (generated values are stable per deployment anyway). `generate` may be combined with `input` (`label`,
+  `description`, `secret: true`) so owners can see or replace the value.
+- `template` uses single braces: `'{ZENITH_PUBLIC_URL}/api'` (write `{{` for a literal brace).
+- `transform: urlencode | argon2id` sits on the declaration and changes the injected value that aliases and
+  templates see, so a password used both raw (db) and in a URL needs a second declaration
+  (`DATABASE_PASSWORD_URLENCODED: { alias: POSTGRES_PASSWORD, transform: urlencode }`).
+- `services: [...]` limits injection; without it a value goes to every service. Declared values replace
+  same-named Compose `environment` entries in the targeted services.
+- Built-ins (resolved only when declared through alias/template): `ZENITH_PUBLIC_URL(S)`, `ZENITH_PUBLIC_HOST(S)`,
+  `ZENITH_PUBLIC_HOSTNAME(S)`, `ZENITH_OWNER_EMAIL` ("when available"), `ZENITH_SMTP_HOST|PORT|FROM|DISPLAY|USER|PASS`.
+- Supported service keys include `healthcheck`, `depends_on` (only `condition: service_healthy` waits),
+  `deploy.replicas`, `deploy.resources.limits|reservations`, numeric `user`, `read_only`, `cap_drop`, `cap_add`,
+  `tmpfs` (memory-backed). `security_opt` is not documented, so Kydi does not use it.
+- `x-zenith.storage.<id>`: `volume` (required), `label`, `description`, `public` (default false; never for DB).
+- No dedicated local validator exists for the publish form. Running `zenith check` at the repository root does
+  validate the publish manifest against the full local schema (including `x-zenith.env`/`storage`), but the
+  server-side preview policy rejects those keys in `zenith up`; previews go through `npm run zenith:preview`.
+- Listing metadata (`zenith publish --metadata`): `productName`, `category` (Business, Communication, Developer
+  tools, Finance, Media, Productivity, Project management, Security), `description` (<=300), `detail` (<=1000),
+  `maintainerName`, `contactEmail`, `license`, optional `website`, `supportUrl`, `alternatives` (array),
+  `partnershipNotes`. Icon/screenshots: JPEG/PNG/WebP, non-empty, <=2 MiB; screenshot caption = file name.

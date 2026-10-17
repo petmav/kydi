@@ -12,9 +12,13 @@ previews on [Zenith Hosting](https://zenith.hosting).
   members with email invitations or direct creation, ownership transfer screen (Settings > Transfer ownership).
   Invitees see pending invitations as a banner with Accept / Decline; a user without any company gets a
   "No company" screen listing invitations and a "Create a company" action.
-- **Auth:** Argon2id password hashes, database-backed signed httpOnly session cookies, login throttling, password
-  reset by email. Server actions use Next.js origin checks; every action and route is company-scoped and
-  ability-checked on the server.
+- **Auth:** Argon2id password hashes, password policy, database-backed signed httpOnly session cookies (rotated at
+  sign-in and on password change), per-IP and per-account throttling, single-use password reset by email, and an
+  install wizard bound to the owner's email or a one-time token. Server actions use Next.js origin checks, and
+  cookie-authenticated API writes must be same-origin. Every action and route is company-scoped and
+  ability-checked on the server (covered by a two-tenant e2e test). `src/middleware.ts` sets the browser security
+  headers (nonce-based CSP, frame and content-type protection, HSTS behind https). See PRODUCTION.md, "Security
+  posture".
 - **Settings:** company profile and logo, preferences (currency lock once data exists, time zone, date/number
   formats, fiscal year), number-format builder with live preview, address formats, email templates with
   placeholders, notifications, tax types (percentage/fixed, compound, sales/purchase), payment modes, units,
@@ -43,7 +47,7 @@ previews on [Zenith Hosting](https://zenith.hosting).
   signed API call), Postmark, Sendmail/Mail, with a "Send test mail" dialog. Resolution order: company
   configuration when switched on, then the platform configuration (Administration > Mail), then the `SMTP_*`
   environment variables, then stdout. Passwords, API keys and tokens are encrypted with AES-256-GCM (key derived
-  from `SESSION_SECRET`), are never sent to the browser, and blank secret inputs keep the stored value. Company
+  from `APP_ENCRYPTION_KEY`), are never sent to the browser, and blank secret inputs keep the stored value. Company
   SMTP hosts must be public host names.
 - **Exchange rates:** providers per company (Settings > Exchange rate provider): Currency Converter (free,
   prepaid, premium or dedicated URL), CurrencyFreaks, Currencylayer, Open Exchange Rates. Each lists the
@@ -90,8 +94,8 @@ previews on [Zenith Hosting](https://zenith.hosting).
 Not built yet (planned, in this order):
 
 - Mail drivers are not exercised against live provider accounts in the test suite (request signing and form
-  validation are unit-tested). Changing `SESSION_SECRET` makes stored mail and rate-provider secrets unreadable;
-  re-enter them afterwards.
+  validation are unit-tested). Changing `APP_ENCRYPTION_KEY` makes stored mail and rate-provider secrets
+  unreadable; re-enter them afterwards. Changing `SESSION_SECRET` only signs everybody out.
 - The editor uses the browser's `execCommand`, which is deprecated but still supported by current browsers.
 - Administration: impersonation ("log in as"), backups, remote file disks, currency editing and PDF page setup
   are not implemented (optional per the spec). Profile photos are shown as a square crop but not re-encoded.
@@ -99,8 +103,9 @@ Not built yet (planned, in this order):
 - Purchasing: no bill attachments, no bill PDF, no supplier credits raised against expenses, no line-quantity
   tracking for partial credits (the credit total is capped instead), recurring costs do not email the creator,
   and purchasing has no REST API endpoints or custom fields yet.
-- The end-to-end suite drives the HTTP API, renders pages with a session cookie and calls server functions
-  directly; it does not click through the UI in a browser (no Playwright).
+- The end-to-end suites drive the HTTP API, render pages with a session cookie and call server functions
+  directly; browser coverage is a Playwright smoke script (`npm run test:browser`: sign-in, page loads, CSP
+  violations, console errors, unlabeled inputs), not a full click-through UI suite.
 
 ## Tech stack
 
@@ -109,7 +114,7 @@ Prisma 6 + PostgreSQL 16 · zod · date-fns · @react-pdf/renderer · nodemailer
 
 ## Local development
 
-Requirements: Node.js 20.10+, Docker.
+Requirements: Node.js 22+ (the container uses Node.js 24 LTS), Docker.
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d   # PostgreSQL 16 on localhost:5432
@@ -126,19 +131,30 @@ Without seeding, open http://localhost:3000 and the install wizard creates the f
 > to the preview session; a localhost `DATABASE_URL` there would override the preview database.
 
 Scripts: `npm run build`, `npm run lint`, `npm test` (domain tests incl. the spec's worked examples, sanitiser,
-mail signing, exchange rates, purchasing maths and a Unicode PDF render), `npm run test:e2e` (see below),
-`npm run db:seed`, `npm run db:reset`.
+mail signing, exchange rates, purchasing maths, a Unicode PDF render and the production-hardening checks),
+`npm run test:e2e` and `npm run test:browser` (see below), `npm run db:seed` (refused with `NODE_ENV=production`
+unless `KYDI_DEMO_SEED=true`), `npm run db:reset`, `npm run zenith:preview` (see "Zenith").
 
 ### End-to-end smoke tests
 
-`npm run test:e2e` runs `e2e/smoke.test.ts` against a running server and the same database (`DATABASE_URL`,
-`SESSION_SECRET` from `.env`):
+`npm run test:e2e` runs the suites in `e2e/` against a running server and the same database. It reads
+`DATABASE_URL`, `SESSION_SECRET` and `CRON_SECRET` from the environment or `.env`. `next start` runs in production
+mode, so it needs production-grade secrets. Use a disposable database:
 
 ```bash
-npm run build
-npx next start -p 3100            # or set E2E_BASE_URL to another server
+export DATABASE_URL=postgresql://...disposable...  SESSION_SECRET=$(openssl rand -hex 32)
+export APP_ENCRYPTION_KEY=$(openssl rand -hex 32) CRON_SECRET=$(openssl rand -hex 32)
+npx prisma migrate deploy && npm run build
+npx next start -p 3100 &          # or set E2E_BASE_URL to another server
 npm run test:e2e
+KYDI_EMAIL=... KYDI_PASSWORD=... npm run test:browser   # Playwright: CSP violations, console errors, unlabeled inputs
 ```
+
+`e2e/tenancy.test.ts` provisions two tenants and proves that neither can read or change the other's records. It
+covers the REST API (also with a spoofed `company` header), pages (also with a spoofed company cookie), PDFs,
+receipts, avatars, statements, reports and the customer portal. It also checks the CSRF guard and the security
+headers. `e2e/install.test.ts` checks that the install wizard stays closed, that the cron secret is enforced and
+that the retention sweep runs.
 
 It creates a throw-away administrator and company, then covers: login page and API login, create customer,
 create invoice (server totals), mark sent and record a payment that settles it, invoice PDF download, saving an
@@ -146,21 +162,42 @@ invoice with "Make recurring" switched on (it must create a recurring invoice an
 rules (bill totals, payment allocation, void, credit against a bill, refund limits) and 32 screens rendered with a
 session cookie. Everything it created is deleted at the end.
 
-## Zenith preview
+## Zenith
+
+The repository has two manifests, because the preview policy (`zenith check` / `zenith up`) is stricter than the
+publish policy:
+
+- `zenith-compose.yml` (repository root) is the **publish manifest**. `zenith publish` reads it from the pinned
+  commit.
+  - Zenith generates `POSTGRES_PASSWORD`, `SESSION_SECRET`, `APP_ENCRYPTION_KEY` and `CRON_SECRET` for each
+    deployment (`x-zenith.env`) and derives `DATABASE_URL`.
+  - It maps `ZENITH_PUBLIC_URL`, `ZENITH_OWNER_EMAIL` and `ZENITH_SMTP_*` to Kydi's variables.
+  - Uploads are kept in private storage.
+  - Both services run with health checks, resource limits, numeric users, read-only root filesystems and no
+    capabilities.
+  - Demo data is off.
+- `zenith-compose.preview.yml` is the **preview manifest**: literal values only, demo data on.
+  - `npm run zenith:preview` copies it over `zenith-compose.yml`, runs `zenith check --upload-size`, then restores
+    the publish manifest byte for byte, also on Ctrl+C.
+  - `npm run zenith:preview -- --up` also runs `zenith up`. First, it adds random `SESSION_SECRET` and
+    `APP_ENCRYPTION_KEY` values to the gitignored `.env.local`.
 
 ```bash
 zenith auth login
-NO_COLOR=1 zenith check --upload-size
-zenith up
+npm run zenith:preview            # check only
+npm run zenith:preview -- --up    # 20-minute preview with demo data
 ```
 
-`zenith-compose.yml` runs two services: `app` (built from the root `Dockerfile`) and `db` (`postgres:16-alpine`
-with a health check and a named volume). The container runs `prisma migrate deploy`, then the Next.js standalone
-server on `0.0.0.0:3000` as a non-root user. Uploads live on the `app-data` volume at `/data/uploads`. With
-`KYDI_DEMO_SEED=true` (the preview default) demo data is created on first boot.
-`zenith-compose.publish.example.yml` shows the publish-time `x-zenith.env` block.
+The container runs `prisma migrate deploy` (protected by an advisory lock), then starts the Next.js standalone
+server on `0.0.0.0:3000` as uid 1001. `GET /api/health` backs the health check. For the publishing steps, see
+PUBLISHING.md. For operating a deployment (variables, backups, upgrades, monitoring, troubleshooting), see
+PRODUCTION.md.
 
 ## Demo credentials
+
+These accounts exist only when demo data is enabled (`KYDI_DEMO_SEED=true`), which is meant for local development
+and previews, never for a real instance. The login page shows the credentials only in that case and never
+pre-fills them in production.
 
 | Area | URL | Email | Password |
 | --- | --- | --- | --- |
@@ -193,16 +230,45 @@ Create a personal token under **Settings → API tokens** (or `POST /api/v1/auth
 | Variable | Required | Description |
 | --- | --- | --- |
 | `DATABASE_URL` | yes | PostgreSQL connection string |
-| `SESSION_SECRET` | yes (prod) | 16+ random characters used to sign session cookies |
+| `SESSION_SECRET` | yes (prod) | 32+ random characters used to sign session cookies; production refuses known example values |
+| `APP_ENCRYPTION_KEY` | yes (prod) | 32+ random characters, different from `SESSION_SECRET`, that encrypt stored credentials; never change it |
 | `APP_URL` | no | Public base URL for links in emails; derived from request headers when unset |
-| `UPLOAD_DIR` | no | Directory for receipts/logos (default `./uploads`, `/data/uploads` in the container) |
-| `CRON_SECRET` | no | Bearer secret for `/api/cron/recurring` (route disabled when unset) |
+| `KYDI_OWNER_EMAIL` | no | Only this email may create the first administrator (Zenith: alias of `ZENITH_OWNER_EMAIL`) |
+| `KYDI_INSTALL_REQUIRE_TOKEN` | no | `true` also requires the boot-time install token when an owner email is set |
+| `UPLOAD_DIR` | no | Directory for receipts and logos (default `./uploads`, `/data/uploads` in the container) |
+| `CRON_SECRET` | no | Bearer secret for `/api/cron/recurring` (route disabled when unset; 24+ characters) |
 | `KYDI_DEMO_SEED` | no | `true` seeds demo data on boot when the database is empty |
 | `KYDI_DISABLE_SCHEDULER` | no | `true` disables the in-process minute timer (boot catch-up still runs) |
-| `SMTP_HOST` | no | SMTP server; when empty, emails are printed to stdout |
+| `KYDI_TRUST_PROXY_HOPS` | no | Reverse proxies appending to `X-Forwarded-For` (default 1) |
+| `KYDI_LOG_FORMAT` | no | `json` for one JSON object per log line |
+| `SMTP_HOST` | no | SMTP server; when empty, emails are logged (production logs withhold bodies) |
 | `SMTP_PORT` | no | SMTP port (default 587; 465 uses implicit TLS) |
 | `SMTP_USER` / `SMTP_PASS` | no | SMTP credentials |
-| `SMTP_FROM` | no | Sender address, e.g. `Kydi <billing@example.com>` |
+| `SMTP_FROM` / `SMTP_FROM_NAME` | no | Sender address, e.g. `Kydi <billing@example.com>`, and optional display name |
+
+For the full reference, including `KYDI_LEGACY_SESSION_SECRET`, `KYDI_LOG_MAIL_BODIES` and `KYDI_SKIP_MIGRATIONS`,
+see PRODUCTION.md.
+
+## Privacy and data
+
+Kydi stores what you enter:
+
+- user accounts: name, email, Argon2id password hash and an optional profile photo
+- company settings
+- customers and suppliers: contact details and an optional portal password hash
+- documents, payments, and expenses with receipt files
+- email logs of sent documents
+- encrypted third-party credentials
+
+Everything stays in your own database and upload volume. Kydi sends no analytics or telemetry; Next.js and Prisma
+telemetry are disabled in the image. Emails go only to the addresses you choose, through the mail configuration
+you set. Expired sessions and reset tokens are removed automatically. Business records stay until you delete
+them. For details, see PRODUCTION.md, "Data stored and retention".
+
+## Security
+
+To report a vulnerability, follow SECURITY.md (private reporting only). Third-party licences are listed in
+THIRD_PARTY_NOTICES.md.
 
 ## Cleanroom statement
 

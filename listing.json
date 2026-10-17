@@ -1,0 +1,13 @@
+{
+  "productName": "Kydi",
+  "category": "Finance",
+  "description": "Self-hosted invoicing for freelancers and small businesses: estimates, invoices, recurring billing, payments, expenses, purchasing and reports, with PDF documents, email delivery and a customer portal.",
+  "detail": "Kydi covers the full billing loop in one self-hosted app. Create customers and items, send estimates that convert to invoices, issue credit notes, and schedule recurring invoices. Record payments across several invoices, track expenses with receipts, and manage suppliers, bills and supplier payments. Reports cover sales, expenses, profit and loss, tax and purchases, with PDF export. Invoices are rendered as PDFs on the server and sent by email with a secure viewer link; customers see their invoices, estimates and payments in a separate portal. Several companies, role-based permissions, a REST API with personal tokens and an administration area are included. On Zenith, all secrets are generated per deployment, data stays in private volumes, and only the deployment owner can create the first administrator account.",
+  "maintainerName": "Peter Mavromichalis",
+  "contactEmail": "TODO-replace-before-publishing@example.com",
+  "license": "MIT",
+  "website": "https://github.com/petmav/kydi",
+  "supportUrl": "https://github.com/petmav/kydi/issues",
+  "alternatives": [],
+  "partnershipNotes": ""
+}
