@@ -123,6 +123,8 @@ model Company {
   bills      Bill[]
   supplierPayments SupplierPayment[]
   recurringCosts RecurringCost[]
+  paymentGateway PaymentGateway?
+  onlinePayments OnlinePayment[]
 }
 
 model CompanySetting {
@@ -229,6 +231,7 @@ model Customer {
   payments           Payment[]
   expenses           Expense[]
   portalSessions     PortalSession[]
+  onlinePayments     OnlinePayment[]
 
   @@unique([companyId, email])
   @@index([companyId, name])
@@ -397,6 +400,7 @@ model Invoice {
   lines                  LineItem[]
   taxes                  AppliedTax[]
   allocations            PaymentAllocation[]
+  onlinePayments         OnlinePayment[]
 
   @@unique([companyId, invoiceNumber])
   @@index([companyId, type, status])
@@ -619,6 +623,7 @@ model Payment {
   customer               Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
   paymentMethod          PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
   allocations            PaymentAllocation[]
+  onlinePayment          OnlinePayment?
 
   @@unique([companyId, paymentNumber])
   @@index([customerId])
@@ -1034,4 +1039,46 @@ model RecurringCost {
   supplier      Supplier        @relation(fields: [supplierId], references: [id], onDelete: NoAction)
 
   @@index([status, nextRunAt])
+}
+
+/// Online payment gateway for the customer portal ("stripe" or "demo"). Secrets are AES-256-GCM encrypted JSON
+/// (secretKey, webhookSecret) and never sent to the browser.
+model PaymentGateway {
+  id        Int      @id @default(autoincrement())
+  companyId Int      @unique
+  enabled   Boolean  @default(true)
+  driver    String
+  /// Non-secret fields, e.g. { "publishableKey": "pk_..." }.
+  options   Json     @default("{}")
+  secrets   String?
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+enum OnlinePaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+}
+
+/// One checkout attempt from the portal. providerRef is the idempotency key: a PAID row has exactly one Payment.
+model OnlinePayment {
+  id          Int                 @id @default(autoincrement())
+  companyId   Int
+  customerId  Int
+  invoiceId   Int
+  driver      String
+  providerRef String              @unique
+  amount      BigInt
+  currency    String
+  status      OnlinePaymentStatus @default(PENDING)
+  paymentId   Int?                @unique
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoice     Invoice             @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  payment     Payment?            @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
 }

@@ -33,5 +33,17 @@ export async function migrateLegacySecrets(): Promise<{ migrated: number; unread
     migrated += r.count;
   }
 
+  const gateways = await db.paymentGateway.findMany({ where: { secrets: { startsWith: "v1:" } }, select: { id: true, secrets: true } });
+  for (const row of gateways) {
+    if (!isLegacySecret(row.secrets)) continue;
+    const next = reencryptLegacy(row.secrets);
+    if (!next) {
+      unreadable += 1;
+      continue;
+    }
+    const r = await db.paymentGateway.updateMany({ where: { id: row.id, secrets: row.secrets }, data: { secrets: next } });
+    migrated += r.count;
+  }
+
   return { migrated, unreadable };
 }

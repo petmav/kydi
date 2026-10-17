@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { getCompanySettings } from "@/lib/settings";
 import { formatDate, isoDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
+import { activeGateway } from "@/server/online-payments";
 
 /** Portal lists: /portal/<slug>/invoices | estimates | payments (non-draft, own records only). */
 export default async function PortalList({ params }: { params: Promise<{ slug: string; kind: string }> }) {
@@ -21,11 +22,12 @@ export default async function PortalList({ params }: { params: Promise<{ slug: s
   let body: React.ReactNode;
   if (kind === "invoices") {
     const rows = await db.invoice.findMany({ where: { ...base, status: { not: "DRAFT" } }, orderBy: { invoiceDate: "desc" } });
+    const canPay = !!(await activeGateway(company.id));
     body = rows.length ? (
       <Table>
-        <thead><tr><Th>Date</Th><Th>Number</Th><Th>Status</Th><Th className="text-right">Amount due</Th><Th className="text-right">Total</Th></tr></thead>
+        <thead><tr><Th>Date</Th><Th>Number</Th><Th>Status</Th><Th className="text-right">Amount due</Th><Th className="text-right">Total</Th>{canPay ? <Th><span className="sr-only">Pay</span></Th> : null}</tr></thead>
         <tbody className="divide-y divide-line">{rows.map((i) => (
-          <tr key={i.id}><Td>{df(i.invoiceDate)}</Td><Td><Link href={href(i.id)} className="font-medium text-brand-700 hover:underline">{i.invoiceNumber}</Link>{i.type === "CREDIT_NOTE" ? <span className="ml-2 text-xs text-muted">Credit note</span> : null}</Td><Td className="flex gap-1"><StatusBadge kind="inv" value={i.status} />{i.type === "INVOICE" ? <PaidBadge paidStatus={i.paidStatus} overdue={i.overdue} /> : null}</Td><Td className="tabular text-right">{money(i.dueAmount)}</Td><Td className="tabular text-right">{money(i.total)}</Td></tr>
+          <tr key={i.id}><Td>{df(i.invoiceDate)}</Td><Td><Link href={href(i.id)} className="font-medium text-brand-700 hover:underline">{i.invoiceNumber}</Link>{i.type === "CREDIT_NOTE" ? <span className="ml-2 text-xs text-muted">Credit note</span> : null}</Td><Td className="flex gap-1"><StatusBadge kind="inv" value={i.status} />{i.type === "INVOICE" ? <PaidBadge paidStatus={i.paidStatus} overdue={i.overdue} /> : null}</Td><Td className="tabular text-right">{money(i.dueAmount)}</Td><Td className="tabular text-right">{money(i.total)}</Td>{canPay ? <Td className="text-right">{i.type === "INVOICE" && i.dueAmount > 0 ? <Link href={href(i.id)} className="font-medium text-brand-700 hover:underline">Pay</Link> : null}</Td> : null}</tr>
         ))}</tbody>
       </Table>
     ) : null;

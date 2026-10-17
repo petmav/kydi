@@ -171,6 +171,9 @@ export async function seedDemo(extra?: Extra): Promise<{ created: boolean }> {
     if (e.status === "ACCEPTED") await setEstimateStatus(ctx, res.id, "ACCEPTED");
   }
 
+  // Demo gateway so the portal shows "Pay" on unpaid invoices without any payment-provider keys.
+  await db.paymentGateway.create({ data: { companyId: cid, driver: "demo" } });
+
   if (extra) await extra(ctx, { customers: customers.map((c) => ({ id: c.id, name: c.name, currency: c.currency })), invoices, today, taxes });
   return { created: true };
 }

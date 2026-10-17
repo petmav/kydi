@@ -7,6 +7,7 @@ import { randomToken } from "@/lib/auth/tokens";
 import { MAX_MONEY, roundTo, toBase, toMinor } from "@/lib/money";
 import { isoDate, parseIsoDate, todayIn } from "@/lib/dates";
 import { saveCustomFieldAnswers, validateCustomFieldAnswers } from "@/lib/custom-fields";
+import { getCompanySettings } from "@/lib/settings";
 import { allocationBaseAmounts } from "@/domain/allocation";
 import { DomainError, recalcInvoice, type Result } from "./invoices";
 import { nextNumber } from "./numbers";
@@ -48,18 +49,18 @@ async function lockInvoices(tx: Tx, ids: number[]) {
 }
 
 /** Validates and writes the full allocation set of a payment, then recalculates every affected invoice. */
-async function replaceAllocations(tx: Tx, ctx: CompanyContext, payment: { id: number; customerId: number; currency: string; amount: number; baseAmount: number }, rows: { invoiceId: number; amount: number }[]) {
+async function replaceAllocations(tx: Tx, companyId: number, payment: { id: number; customerId: number; currency: string; amount: number; baseAmount: number }, rows: { invoiceId: number; amount: number }[]) {
   const previous = await tx.paymentAllocation.findMany({ where: { paymentId: payment.id } });
   await lockInvoices(tx, [...previous.map((p) => p.invoiceId), ...rows.map((r) => r.invoiceId)]);
   const errors: FieldErrors = {};
   const seen = new Set<number>();
   let sum = 0;
-  const avail = new Map((await openInvoices(ctx.companyId, payment.customerId, payment.id, tx)).map((i) => [i.id, i]));
+  const avail = new Map((await openInvoices(companyId, payment.customerId, payment.id, tx)).map((i) => [i.id, i]));
   for (const [i, r] of rows.entries()) {
     const key = `allocations.${i}.amount`;
     if (seen.has(r.invoiceId)) errors[key] = ["payment_allocation_duplicate_invoice: each invoice once per payment."];
     seen.add(r.invoiceId);
-    const inv = await tx.invoice.findFirst({ where: { id: r.invoiceId, companyId: ctx.companyId } });
+    const inv = await tx.invoice.findFirst({ where: { id: r.invoiceId, companyId } });
     if (!inv) errors[key] = ["Invoice not found."];
     else if (inv.customerId !== payment.customerId || inv.currency !== payment.currency) errors[key] = ["Invoice belongs to another customer or currency."];
     else if (inv.type !== "INVOICE" || inv.status === "DRAFT") errors[key] = ["Drafts and credit notes cannot receive payments."];
@@ -112,7 +113,7 @@ export async function savePayment(ctx: CompanyContext, id: number | null, input:
         ? await tx.payment.update({ where: { id: existing.id }, data: { ...data, ...(suggestion ? { customerSequenceNumber: suggestion.customerSequence } : {}) } })
         : await tx.payment.create({ data: { ...data, companyId: ctx.companyId, creatorId: ctx.user.id, sequenceNumber: suggestion!.sequence, customerSequenceNumber: suggestion!.customerSequence, uniqueHash: randomToken(24) } });
       const rows = allocations ?? existing?.allocations.map((a) => ({ invoiceId: a.invoiceId, amount: Number(a.amount) })) ?? [];
-      await replaceAllocations(tx, ctx, { id: p.id, customerId: customer.id, currency: customer.currency, amount, baseAmount }, rows.filter((r) => r.amount > 0));
+      await replaceAllocations(tx, ctx.companyId, { id: p.id, customerId: customer.id, currency: customer.currency, amount, baseAmount }, rows.filter((r) => r.amount > 0));
       await saveCustomFieldAnswers(tx, ctx.companyId, "Payment", p.id, cf.values);
       await logExchangeRate(tx, ctx.companyId, customer.currency, ctx.settings.currency, rate);
       return p;
@@ -149,7 +150,7 @@ export async function applyCredit(ctx: CompanyContext, customerId: number, rows:
         if (!p) throw new DomainError("Payment not found.");
         const merged = new Map(p.allocations.map((a) => [a.invoiceId, Number(a.amount)]));
         for (const r of rows.filter((x) => x.paymentId === paymentId)) merged.set(r.invoiceId, (merged.get(r.invoiceId) ?? 0) + r.amount);
-        await replaceAllocations(tx, ctx, { id: p.id, customerId, currency: p.currency, amount: Number(p.amount), baseAmount: Number(p.baseAmount) }, [...merged].map(([invoiceId, amount]) => ({ invoiceId, amount })));
+        await replaceAllocations(tx, ctx.companyId, { id: p.id, customerId, currency: p.currency, amount: Number(p.amount), baseAmount: Number(p.baseAmount) }, [...merged].map(([invoiceId, amount]) => ({ invoiceId, amount })));
       }
     }, { timeout: 20000 });
     return { ok: true, id: customerId };
@@ -175,7 +176,7 @@ export async function replacePaymentAllocations(ctx: CompanyContext, paymentId: 
     await db.$transaction(
       async (tx) => {
         await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${p.id} FOR UPDATE`;
-        await replaceAllocations(tx, ctx, { id: p.id, customerId: p.customerId, currency: p.currency, amount: Number(p.amount), baseAmount: Number(p.baseAmount) }, rows);
+        await replaceAllocations(tx, ctx.companyId, { id: p.id, customerId: p.customerId, currency: p.currency, amount: Number(p.amount), baseAmount: Number(p.baseAmount) }, rows);
       },
       { timeout: 20000 },
     );
@@ -184,4 +185,57 @@ export async function replacePaymentAllocations(ctx: CompanyContext, paymentId: 
     if (e instanceof DomainError) return { ok: false, error: e.message, fieldErrors: e.fieldErrors };
     throw e;
   }
+}
+
+const ONLINE_METHOD: Record<string, string> = { stripe: "Online (Stripe)", demo: "Online (demo)" };
+
+/**
+ * Turns a confirmed portal checkout into a Payment allocated to its invoice. Idempotent: the OnlinePayment row is
+ * locked and a PAID row returns its existing payment, so webhook + return-URL races record the money once. Any
+ * amount the invoice can no longer take (paid meanwhile) stays as unapplied customer credit.
+ */
+export async function recordOnlinePayment(onlinePaymentId: number): Promise<{ paymentId: number; created: boolean }> {
+  const companyId = (await db.onlinePayment.findUniqueOrThrow({ where: { id: onlinePaymentId }, select: { companyId: true } })).companyId;
+  const settings = await getCompanySettings(companyId);
+  return db.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "OnlinePayment" WHERE id = ${onlinePaymentId} FOR UPDATE`;
+      const op = await tx.onlinePayment.findUniqueOrThrow({ where: { id: onlinePaymentId }, include: { invoice: true } });
+      if (op.status === "PAID" && op.paymentId) return { paymentId: op.paymentId, created: false };
+      const amount = Number(op.amount);
+      const rate = op.currency === settings.currency ? 1 : op.invoice.exchangeRate;
+      const baseAmount = toBase(amount, rate);
+      const method = await tx.paymentMethod.upsert({
+        where: { companyId_name: { companyId: op.companyId, name: ONLINE_METHOD[op.driver] ?? "Online" } },
+        create: { companyId: op.companyId, name: ONLINE_METHOD[op.driver] ?? "Online" },
+        update: {},
+      });
+      const n = await nextNumber(op.companyId, "payment", op.customerId, tx);
+      const p = await tx.payment.create({
+        data: {
+          companyId: op.companyId,
+          customerId: op.customerId,
+          paymentNumber: n.number,
+          sequenceNumber: n.sequence,
+          customerSequenceNumber: n.customerSequence,
+          paymentDate: parseIsoDate(todayIn(settings.time_zone))!,
+          amount,
+          currency: op.currency,
+          exchangeRate: rate,
+          baseAmount,
+          paymentMethodId: method.id,
+          notes: `<p>Paid online via the customer portal (${op.driver === "demo" ? "demo gateway" : "Stripe"}, ref ${op.providerRef}).</p>`,
+          uniqueHash: randomToken(24),
+        },
+      });
+      await lockInvoices(tx, [op.invoiceId]);
+      const open = (await openInvoices(op.companyId, op.customerId, p.id, tx)).find((i) => i.id === op.invoiceId);
+      const allocate = Math.min(amount, Math.max(0, open?.available ?? 0));
+      await replaceAllocations(tx, op.companyId, { id: p.id, customerId: op.customerId, currency: op.currency, amount, baseAmount }, allocate > 0 ? [{ invoiceId: op.invoiceId, amount: allocate }] : []);
+      await logExchangeRate(tx, op.companyId, op.currency, settings.currency, rate);
+      await tx.onlinePayment.update({ where: { id: op.id }, data: { status: "PAID", paymentId: p.id } });
+      return { paymentId: p.id, created: true };
+    },
+    { timeout: 20000 },
+  );
 }
