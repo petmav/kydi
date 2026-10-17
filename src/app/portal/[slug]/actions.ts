@@ -9,7 +9,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createPortalSession, destroyPortalSession, getPortalCompany, requirePortalCustomer } from "@/lib/auth/portal";
 import { randomToken, sha256 } from "@/lib/auth/tokens";
 import { rateLimit } from "@/lib/rate-limit";
-import { sendMail } from "@/lib/mail";
+import { sendCompanyMail } from "@/server/mailer";
 import { getBaseUrl } from "@/lib/url";
 import { setFlash } from "@/lib/flash";
 import { estimateTransitions } from "@/domain/status";
@@ -45,7 +45,7 @@ export async function portalForgotAction(slug: string, _prev: ActionState, formD
     const token = randomToken();
     await db.portalResetToken.create({ data: { tokenHash: sha256(token), customerId: customer.id, expiresAt: new Date(Date.now() + 3600_000) } });
     const link = `${await getBaseUrl()}/portal/${slug}/reset-password/${token}`;
-    await sendMail({ to: customer.email, subject: `Reset your ${company.name} portal password`, html: `<p>Use this link within 60 minutes to choose a new password:</p><p><a href="${link}">${link}</a></p>` }).catch((e) => console.error(e));
+    await sendCompanyMail(company.id, { to: customer.email, subject: `Reset your ${company.name} portal password`, html: `<p>Use this link within 60 minutes to choose a new password:</p><p><a href="${link}">${link}</a></p>` }).catch((e) => console.error(e));
   }
   return success("If an account exists for that email, a reset link is on its way.");
 }

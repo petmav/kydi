@@ -6,7 +6,7 @@ import { randomToken } from "@/lib/auth/tokens";
 import { addDaysIso, isoDate, parseIsoDate, todayIn, zonedParts, zonedToUtc } from "@/lib/dates";
 import { getCompanySettings } from "@/lib/settings";
 import { copyCustomFieldAnswers, getCustomFields, saveCustomFieldAnswers, validateCustomFieldAnswers, type CfModel } from "@/lib/custom-fields";
-import { sendMail } from "@/lib/mail";
+import { sendPlatformMail } from "@/server/mailer";
 import { getBaseUrl } from "@/lib/url";
 import { isValidCron, nextOccurrence } from "@/domain/cron";
 import { estimateTransitions, shouldMarkOverdue } from "@/domain/status";
@@ -145,7 +145,7 @@ export async function deleteRecurring(ctx: CompanyContext, ids: number[]) {
 async function notifyCreator(creatorId: number | null, subject: string, html: string) {
   if (!creatorId) return;
   const u = await db.user.findUnique({ where: { id: creatorId } });
-  if (u) await sendMail({ to: u.email, subject, html }).catch((e) => console.error("[kydi] creator notification failed", e));
+  if (u) await sendPlatformMail({ to: u.email, subject, html }).catch((e) => console.error("[kydi] creator notification failed", e));
 }
 
 /** Generates invoices for due schedules (spec §4.9). Safe to call repeatedly (idempotent per moment). */

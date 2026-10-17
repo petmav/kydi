@@ -31,8 +31,13 @@ previews on [Zenith Hosting](https://zenith.hosting).
   paid / overdue), mark as sent, clone, convert estimate ↔ invoice, accept/reject, partial credit notes.
 - **PDF:** three invoice and three estimate layouts plus a payment receipt, rendered with `@react-pdf/renderer`
   (no headless browser). Item custom fields with "Show on document" print as extra line columns. Permanent public PDF links and expiring emailed viewer links that mark documents viewed.
-- **Email:** send dialog with preview, placeholders, optional PDF attachment, email log per document; SMTP via
-  `nodemailer`, or the message is printed to stdout when SMTP is not configured.
+- **Email:** send dialog with preview, placeholders, optional PDF attachment, email log per document.
+  Per-company mail drivers (Settings > Mail configuration, owner only): SMTP, Mailgun, Amazon SES (SigV4
+  signed API call), Postmark, Sendmail/Mail, with a "Send test mail" dialog. Resolution order: company
+  configuration when switched on, then the platform configuration (Administration > Mail), then the `SMTP_*`
+  environment variables, then stdout. Passwords, API keys and tokens are encrypted with AES-256-GCM (key derived
+  from `SESSION_SECRET`), are never sent to the browser, and blank secret inputs keep the stored value. Company
+  SMTP hosts must be public host names.
 - **Payments:** allocations across invoices with row locking, unapplied customer credit, receipts.
 - **Expenses:** categories, purchase-tax breakdown, receipt upload stored on the volume-backed `/data/uploads`.
 - **Recurring invoices:** cron-expression schedules (presets or custom) in the company time zone, previews,
@@ -58,8 +63,9 @@ previews on [Zenith Hosting](https://zenith.hosting).
 
 Not built yet (planned, in this order):
 
-- Per-company mail drivers (Mailgun, SES, Postmark, Sendmail) with test send; all mail uses the installation
-  SMTP settings today.
+- Mail drivers are not exercised against live provider accounts in the test suite (request signing and form
+  validation are unit-tested). Changing `SESSION_SECRET` makes stored mail and rate-provider secrets unreadable;
+  re-enter them afterwards.
 - Exchange-rate providers and live rate lookup; the last rate used per currency is suggested instead.
 - Rich-text toolbar for notes and email templates (HTML is typed into a plain text area) and an allow-list HTML
   sanitiser (the current one strips scripts, event handlers and `javascript:` links only).

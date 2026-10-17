@@ -7,7 +7,7 @@ import { failure, guard, parseForm, success, zEmail, zOptionalString, zPassword,
 import { requireOwner } from "@/lib/auth/context";
 import { hashPassword } from "@/lib/auth/password";
 import { randomToken } from "@/lib/auth/tokens";
-import { sendMail } from "@/lib/mail";
+import { sendCompanyMail } from "@/server/mailer";
 import { getBaseUrl } from "@/lib/url";
 
 const zId = z.coerce.number().int().positive();
@@ -34,7 +34,7 @@ export async function inviteMemberAction(_prev: ActionState, formData: FormData)
       data: { companyId: ctx.companyId, email, roleId, token, invitedById: ctx.user.id, expiresAt: new Date(Date.now() + 7 * 86400000) },
     });
     const link = `${await getBaseUrl()}/invitations/${token}`;
-    await sendMail({
+    await sendCompanyMail(ctx.companyId, {
       to: email,
       subject: `You're invited to join ${ctx.company.name} on Kydi`,
       html: `<p>${ctx.user.name} invited you to join <strong>${ctx.company.name}</strong> on Kydi.</p><p><a href="${link}">Accept the invitation</a> (valid for 7 days).</p>`,

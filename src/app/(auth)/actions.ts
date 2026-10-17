@@ -9,7 +9,7 @@ import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession } from "@/lib/auth/session";
 import { randomToken, sha256 } from "@/lib/auth/tokens";
 import { rateLimit, resetRateLimit } from "@/lib/rate-limit";
-import { sendMail } from "@/lib/mail";
+import { sendPlatformMail } from "@/server/mailer";
 import { getBaseUrl, safeNext } from "@/lib/url";
 import { setFlash } from "@/lib/flash";
 
@@ -67,7 +67,7 @@ export async function forgotPasswordAction(_prev: ActionState, formData: FormDat
       data: { userId: user.id, tokenHash: sha256(token), expiresAt: new Date(Date.now() + 60 * 60 * 1000) },
     });
     const link = `${await getBaseUrl()}/reset-password/${token}`;
-    await sendMail({
+    await sendPlatformMail({
       to: user.email,
       subject: "Reset your Kydi password",
       html: `<p>Hi ${escapeHtml(user.name)},</p><p>We received a request to reset your password. This link is valid for 60 minutes:</p><p><a href="${link}">${link}</a></p><p>If you did not request this, you can ignore this email.</p>`,

@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { failure, guard, parseForm, success, zEmail, type ActionState } from "@/lib/action";
+import { failure, formToObject, guard, parseForm, success, zEmail, type ActionState } from "@/lib/action";
+import { saveMailConfig } from "@/server/mail-settings";
 import { requireOwner, requireUser } from "@/lib/auth/context";
 import { randomToken, sha256 } from "@/lib/auth/tokens";
-import { sendMail } from "@/lib/mail";
+import { sendCompanyMail } from "@/server/mailer";
 
 const testMailSchema = z.object({
   to: zEmail,
@@ -20,12 +21,12 @@ export async function sendTestMailAction(_prev: ActionState, formData: FormData)
     const parsed = parseForm(testMailSchema, formData);
     if (!parsed.success) return parsed.state;
     try {
-      const res = await sendMail({
+      const res = await sendCompanyMail(ctx.companyId, {
         to: parsed.data.to,
         subject: parsed.data.subject,
         html: `<p>${parsed.data.message.replace(/[<>&]/g, "").replace(/\n/g, "<br>")}</p><p>— ${ctx.company.name} via Kydi</p>`,
       });
-      return success(res.delivered ? "Test email sent." : "SMTP is not configured: the email was written to the server log.");
+      return success(res.delivered ? `Test email sent via ${res.transport}.` : "No mail server is configured: the email was written to the server log.");
     } catch (err) {
       return failure(`Sending failed: ${err instanceof Error ? err.message : "unknown error"}`);
     }
@@ -65,5 +66,16 @@ export async function revokeApiTokenAction(id: number): Promise<ActionState> {
     await db.apiToken.deleteMany({ where: { id, userId: user.id } });
     revalidatePath("/settings/api-tokens");
     return success("Token revoked.");
+  });
+}
+
+/** Spec §5.12 Mail configuration (owner only). Secrets stay server-side. */
+export async function saveMailConfigAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return guard(async () => {
+    const ctx = await requireOwner();
+    const r = await saveMailConfig(ctx.companyId, formToObject(formData));
+    if (!r.ok) return failure(r.error, r.fieldErrors);
+    revalidatePath("/settings/mail");
+    return success("Mail configuration saved.");
   });
 }
