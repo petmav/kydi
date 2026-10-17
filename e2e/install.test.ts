@@ -46,3 +46,33 @@ describe("scheduler retention sweep and cron secret", () => {
     if (!body.skipped) expect(await db.session.count({ where: { tokenHash: hash } })).toBe(0);
   });
 });
+
+describe("credential migration from SESSION_SECRET to APP_ENCRYPTION_KEY", () => {
+  it("re-encrypts legacy v1 values in the database and leaves v2 values alone", async () => {
+    const { encryptSecretLegacy, decryptJson, decryptSecret, encryptSecret } = await import("@/lib/secrets");
+    const { migrateLegacySecrets } = await import("@/server/secret-migration");
+    const session = process.env.SESSION_SECRET;
+    if (!session || !process.env.APP_ENCRYPTION_KEY) return; // needs the server's secrets
+    const user = await db.user.findFirstOrThrow();
+    const { createCompanyForUser, deleteCompany } = await import("@/lib/companies");
+    const company = await createCompanyForUser(user.id, { name: `E2E Migration ${Date.now()}`, currency: "USD", country: "US", time_zone: "UTC" });
+    try {
+      const mail = await db.mailConfig.create({ data: { companyId: company.id, driver: "smtp", options: { host: "smtp.example.org" }, secrets: encryptSecretLegacy(JSON.stringify({ password: "legacy-smtp-pass" }), session) } });
+      const legacyKey = await db.exchangeRateProvider.create({ data: { companyId: company.id, driver: "currency_freak", keyEncrypted: encryptSecretLegacy("legacy-api-key", session), currencies: ["EUR"] } });
+      const current = await db.exchangeRateProvider.create({ data: { companyId: company.id, driver: "currency_freak", keyEncrypted: encryptSecret("current-api-key"), currencies: ["GBP"] } });
+      const r = await migrateLegacySecrets();
+      expect(r.migrated).toBeGreaterThanOrEqual(2);
+      const m = await db.mailConfig.findUniqueOrThrow({ where: { id: mail.id } });
+      expect(m.secrets?.startsWith("v2:")).toBe(true);
+      expect(decryptJson(m.secrets)).toEqual({ password: "legacy-smtp-pass" });
+      const k = await db.exchangeRateProvider.findUniqueOrThrow({ where: { id: legacyKey.id } });
+      expect(k.keyEncrypted.startsWith("v2:")).toBe(true);
+      expect(decryptSecret(k.keyEncrypted)).toBe("legacy-api-key");
+      // Rotating SESSION_SECRET afterwards does not matter: v2 values only need APP_ENCRYPTION_KEY.
+      expect(decryptSecret(k.keyEncrypted, undefined, ["a-completely-different-session-secret-0123456789"])).toBe("legacy-api-key");
+      expect((await db.exchangeRateProvider.findUniqueOrThrow({ where: { id: current.id } })).keyEncrypted).toBe(current.keyEncrypted);
+    } finally {
+      await deleteCompany(company.id);
+    }
+  });
+});
