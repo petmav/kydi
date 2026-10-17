@@ -51,6 +51,8 @@ Online payments (`server/online-payments.ts`, `lib/stripe.ts`): the portal "Pay"
 
 Automatic portal access (`domain/portal-access.ts` rules, `server/portal-access.ts`): every path that makes an invoice sent (`sendDocumentEmail`, `markInvoiceSent`, `saveInvoice` with `send`) calls `ensurePortalAccess`, which enables the customer's portal and emails a setup link (a `PortalResetToken`, 14 days, `?setup=1`) to the customer's own address. Setup links never go into the invoice email itself, because staff can CC others and the email log stores the body. `Customer.portalOptOut` remembers staff switching access off.
 
+Portal sign-in (`server/portal-login.ts`, `lib/auth/login-code.ts`): password and emailed one-time codes (`PortalLoginCode`, keyed HMAC, 10 min, 5 tries) both work for every portal customer. `loginHint(customerId)` is the signed `?u=` parameter that pre-fills the email on `/portal/<slug>/login`; never put the email address itself in a URL.
+
 Email (`server/mailer.ts`, `mail-transport.ts`, `mail-settings.ts`): the driver is picked in this order: company mail config if enabled, then the platform config, then `SMTP_*` env vars, then stdout. Stored secrets are encrypted and never sent to the browser. A blank secret input keeps the stored value.
 
 ## Conventions

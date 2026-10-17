@@ -16,6 +16,8 @@ import { getBaseUrl } from "@/lib/url";
 import { setFlash } from "@/lib/flash";
 import { estimateTransitions } from "@/domain/status";
 import { completeDemoCheckout, startCheckout } from "@/server/online-payments";
+import { requestLoginCode, verifyLoginCode } from "@/server/portal-login";
+import { normalizeLoginCode } from "@/lib/auth/login-code";
 
 const loginSchema = z.object({ email: zEmail, password: z.string().min(1, "Enter your password.") });
 
@@ -31,6 +33,36 @@ export async function portalLoginAction(slug: string, _prev: ActionState, formDa
   clearCredentialFailures(`portal:${company.id}`, email);
   if (!customer.enablePortal) return failure("Portal access is not enabled for this account. Please contact us.");
   await createPortalSession(customer.id);
+  redirect(`/portal/${slug}`);
+}
+
+/** Emails a one-time sign-in code. Same answer whether or not the email has portal access. */
+export async function portalRequestCodeAction(slug: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const company = await getPortalCompany(slug);
+  const parsed = parseForm(z.object({ email: zEmail }), formData);
+  if (!parsed.success) return failure("Enter your email address first.", parsed.state?.fieldErrors);
+  const sent = success("If an account exists for that email, a 6-digit code is on its way.", { email: parsed.data.email });
+  if (!rateLimit(`portal-code:ip:${await clientIp()}`, 5, 15 * 60_000).ok) return failure("Too many requests. Please try again later.");
+  if (!rateLimit(`portal-code:${company.id}:${parsed.data.email.toLowerCase()}`, 3, 15 * 60_000).ok) return sent;
+  await requestLoginCode(company, parsed.data.email).catch((e) => console.error("[kydi] sign-in code email failed", e));
+  return sent;
+}
+
+const codeSchema = z.object({ email: zEmail, code: z.string().trim().min(1, "Enter the 6-digit code.") });
+
+/** Signs a customer in with an emailed code (works whether or not they have set a password). */
+export async function portalCodeLoginAction(slug: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const company = await getPortalCompany(slug);
+  const parsed = parseForm(codeSchema, formData);
+  if (!parsed.success) return parsed.state;
+  const { email } = parsed.data;
+  const code = normalizeLoginCode(parsed.data.code);
+  if (!code) return failure("Enter the 6-digit code from the email.", { code: ["Enter the 6 digits from the email."] });
+  if (!throttleCredentials(`portal-code-login:${company.id}`, await clientIp(), email).ok) return failure("Too many attempts. Please wait a minute and try again.");
+  const customerId = await verifyLoginCode(company, email, code);
+  if (!customerId) return failure("That code is wrong or has expired. Check the latest email, or send a new code.", { code: ["Wrong or expired code."] });
+  clearCredentialFailures(`portal-code-login:${company.id}`, email);
+  await createPortalSession(customerId);
   redirect(`/portal/${slug}`);
 }
 

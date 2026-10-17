@@ -102,7 +102,7 @@ export async function saveCustomer(
   if (input.enablePortal && !input.email) {
     return { ok: false, error: "Portal access requires an email address.", fieldErrors: { email: ["Required when portal access is enabled."] } };
   }
-  // No password is required: customers choose their own through the setup email or “Forgot password?”.
+  // No password is required: portal customers can always sign in with an emailed code and set their own password.
 
   const cf = await validateCustomFieldAnswers(ctx.companyId, "Customer", customFieldSource);
   if (!cf.ok) return { ok: false, error: "Please correct the highlighted fields.", fieldErrors: cf.errors };

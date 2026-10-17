@@ -92,6 +92,10 @@ previews on [Zenith Hosting](https://zenith.hosting).
   No password is ever generated or printed. Invoice emails and invoice PDFs show the portal sign-in link and the
   customer's sign-in email. A later invoice to the same customer reuses the same account. Customers without an email
   are skipped, and unticking "Enable portal" on a customer is remembered so invoices never switch it back on.
+- **Portal sign-in options:** customers can always sign in with a one-time 6-digit code emailed to them (valid 10
+  minutes, single use, cancelled after 5 wrong tries, rate-limited), and with a password once they set one (portal
+  Settings, any time). Portal links in invoice emails, PDFs and portal emails carry a signed `?u=` hint that fills in
+  the customer's email on the sign-in page without putting the address in the URL.
 - **Online payments** (Settings > Online payments, owner only): portal customers pay an invoice's full outstanding
   balance with a "Pay" button through Stripe Checkout (restricted API key and webhook signing secret encrypted at
   rest; REST API called without the Stripe SDK, API version pinned to `2026-08-26.dahlia`). A confirmed checkout

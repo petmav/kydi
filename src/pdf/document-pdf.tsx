@@ -22,7 +22,7 @@ export type PdfDoc = {
   totals: { label: string; value: string; strong?: boolean; boxed?: boolean }[];
   notes: Block[];
   /** Customer portal pointer on invoices: login URL and the customer's sign-in email (never a password). */
-  portal: { url: string; email: string } | null;
+  portal: { url: string; displayUrl: string; email: string } | null;
   footer: string;
 };
 
@@ -242,11 +242,11 @@ export function DocumentPdf({ d }: { d: PdfDoc }) {
             <Text style={s.muted}>
               Customer portal:{" "}
               <Link src={d.portal.url} style={{ color: "#1d4ed8" }}>
-                {d.portal.url}
+                {d.portal.displayUrl}
               </Link>
             </Text>
             <Text style={s.muted}>Sign in with: {d.portal.email}</Text>
-            <Text style={s.small}>First visit? Use the setup email you received, or “Forgot password?” on the sign-in page.</Text>
+            <Text style={s.small}>Sign in with a one-time code we email you, or with your password if you have set one.</Text>
           </View>
         ) : null}
         <Text style={[s.small, { position: "absolute", bottom: 20, left: 40, right: 40, textAlign: "center" }]} render={({ pageNumber, totalPages }) => `${d.footer} · Page ${pageNumber} of ${totalPages}`} fixed />

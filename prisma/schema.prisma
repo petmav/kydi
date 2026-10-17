@@ -234,6 +234,7 @@ model Customer {
   expenses           Expense[]
   portalSessions     PortalSession[]
   onlinePayments     OnlinePayment[]
+  loginCodes         PortalLoginCode[]
 
   @@unique([companyId, email])
   @@index([companyId, name])
@@ -255,6 +256,21 @@ model PortalResetToken {
   expiresAt  DateTime
   usedAt     DateTime?
   createdAt  DateTime  @default(now())
+}
+
+/// One-time 6-digit sign-in code emailed to a portal customer (passwordless sign-in). Only an HMAC of the code
+/// is stored; a code works once, for 10 minutes, and is cancelled after 5 wrong tries.
+model PortalLoginCode {
+  id         Int       @id @default(autoincrement())
+  customerId Int
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
 }
 
 model Unit {

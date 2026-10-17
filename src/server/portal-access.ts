@@ -4,6 +4,7 @@ import { getCompanySettings, yes } from "@/lib/settings";
 import { randomToken, sha256 } from "@/lib/auth/tokens";
 import { getBaseUrl } from "@/lib/url";
 import { decidePortalAccess, SETUP_LINK_DAYS } from "@/domain/portal-access";
+import { loginHint } from "@/lib/auth/login-code";
 import { sendCompanyMail } from "@/server/mailer";
 
 /**
@@ -12,10 +13,16 @@ import { sendCompanyMail } from "@/server/mailer";
  * stop the invoice from being sent.
  */
 
-export type PortalInfo = { loginUrl: string; email: string };
+/** `loginUrl` carries a signed hint that pre-fills the customer's email; `displayUrl` is the plain address to show. */
+export type PortalInfo = { loginUrl: string; displayUrl: string; email: string };
 
-export async function portalLoginUrl(company: Pick<Company, "slug">): Promise<string> {
-  return `${await getBaseUrl()}/portal/${company.slug}/login`;
+export async function portalLoginUrl(company: Pick<Company, "slug">, customerId?: number): Promise<string> {
+  const url = `${await getBaseUrl()}/portal/${company.slug}/login`;
+  return customerId ? `${url}?u=${encodeURIComponent(loginHint(customerId))}` : url;
+}
+
+async function portalInfo(company: Company, customerId: number, email: string): Promise<PortalInfo> {
+  return { loginUrl: await portalLoginUrl(company, customerId), displayUrl: await portalLoginUrl(company), email };
 }
 
 async function liveSetupLink(customerId: number): Promise<boolean> {
@@ -26,10 +33,10 @@ async function liveSetupLink(customerId: number): Promise<boolean> {
  * What documents for this customer should say about the portal right now, without side effects: the login URL
  * and the customer's login email when portal access is on, or would be switched on by sending.
  */
-export async function portalInfoFor(company: Company, customer: Pick<Customer, "email" | "enablePortal" | "portalOptOut">): Promise<PortalInfo | null> {
+export async function portalInfoFor(company: Company, customer: Pick<Customer, "id" | "email" | "enablePortal" | "portalOptOut">): Promise<PortalInfo | null> {
   const s = await getCompanySettings(company.id);
   const d = decidePortalAccess({ auto: yes(s.auto_portal_access), email: customer.email, enablePortal: customer.enablePortal, optOut: customer.portalOptOut, hasPassword: true, hasLiveSetupLink: true });
-  return d.enabled && customer.email ? { loginUrl: await portalLoginUrl(company), email: customer.email } : null;
+  return d.enabled && customer.email ? portalInfo(company, customer.id, customer.email) : null;
 }
 
 /** Switches the invoice customer's portal access on and emails a setup link when they have no password yet. */
@@ -53,7 +60,7 @@ export async function ensurePortalAccess(companyId: number, customerId: number):
     if (d.enable) await db.customer.update({ where: { id: customer.id }, data: { enablePortal: true } });
     if (!d.enabled || !customer.email) return null;
     if (d.invite) await sendSetupInvite(company, customer.id, customer.name, customer.email);
-    return { loginUrl: await portalLoginUrl(company), email: customer.email };
+    return portalInfo(company, customer.id, customer.email);
   } catch (e) {
     console.error("[kydi] automatic portal access failed", e);
     return null;
@@ -67,16 +74,17 @@ async function sendSetupInvite(company: Company, customerId: number, name: strin
   const token = randomToken();
   await db.portalResetToken.create({ data: { tokenHash: sha256(token), customerId, expiresAt: new Date(Date.now() + SETUP_LINK_DAYS * 86_400_000) } });
   const base = await getBaseUrl();
-  const link = `${base}/portal/${company.slug}/reset-password/${token}?setup=1`;
+  const signIn = await portalLoginUrl(company, customerId);
+  const setPassword = `${base}/portal/${company.slug}/reset-password/${token}?setup=1`;
   // Lazy import: email.ts calls into this module when sending invoices.
   const { layout } = await import("./email");
   const html = layout({
     companyName: company.name,
     logoUrl: company.logoPath ? `${base}/api/files/logo/${company.uniqueHash}` : null,
-    body: `<p>Hello ${esc(name)},</p><p>${esc(company.name)} has set up a customer portal for you, where you can view, download and pay your invoices at any time.</p><p>You sign in with your email address, <strong>${esc(email)}</strong>. Choose your password with the button below. The link works once and expires in ${SETUP_LINK_DAYS} days; after that, use “Forgot password?” on the sign-in page.</p>`,
-    buttonLabel: "Set up your portal access",
-    link,
-    extra: `<p style="font-size:12px;color:#64748b">If the button does not work, copy this link into your browser:<br>${esc(link)}</p>`,
+    body: `<p>Hello ${esc(name)},</p><p>${esc(company.name)} has set up a customer portal for you, where you can view, download and pay your invoices at any time.</p><p>No password needed: open the portal and choose <strong>Email me a sign-in code</strong>, and we send a 6-digit code to <strong>${esc(email)}</strong>.</p>`,
+    buttonLabel: "Open your portal",
+    link: signIn,
+    extra: `<p>Prefer a password? <a href="${esc(setPassword)}" style="color:#1d4ed8">Set one now</a> (link valid ${SETUP_LINK_DAYS} days), or any time later under Settings in the portal. Sign-in codes keep working either way.</p><p style="font-size:12px;color:#64748b">If the links do not work, copy them into your browser:<br>Portal: ${esc(signIn)}<br>Set a password: ${esc(setPassword)}</p>`,
   });
   await sendCompanyMail(company.id, { to: email, subject: `Your ${company.name} customer portal`, html });
 }

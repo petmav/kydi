@@ -119,7 +119,7 @@ export function CustomerForm({
                     label="Password"
                     type="password"
                     autoComplete="new-password"
-                    hint={values.hasPassword ? "Leave blank to keep the current password." : "Optional. Leave blank and the customer chooses their own password from the setup email sent with their first invoice, or with “Forgot password?”."}
+                    hint={values.hasPassword ? "Leave blank to keep the current password." : "Optional. Customers can always sign in with a code emailed to them, and set their own password later."}
                   />
                   <Field name="confirm" label="Confirm password" type="password" autoComplete="new-password" />
                 </div>

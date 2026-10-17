@@ -44,7 +44,7 @@ const doc: PdfDoc = {
   lines: [{ name: "Συμβουλευτική", description: "Консультация", quantity: "1", price: "€100.00", discount: null, tax: null, amount: "€100.00", extra: [] }],
   totals: [{ label: "Total", value: "€100.00", strong: true }],
   notes: [{ text: "Ευχαριστούμε · Спасибо", bold: false, heading: false }],
-  portal: { url: "https://kydi.example.org/portal/kydi-test/login", email: "billing@example.org" },
+  portal: { url: "https://kydi.example.org/portal/kydi-test/login", displayUrl: "https://kydi.example.org/portal/kydi-test/login", email: "billing@example.org" },
   footer: "Kydi Test Ltd · INV-000001",
 };
 

@@ -48,10 +48,10 @@ async function placeholderValues(company: Company, customer: Record<string, unkn
 }
 
 /** Portal box on invoice PDFs: only when the customer already has portal access (drafts stay silent). */
-async function invoicePortal(company: Company, customer: { email: string | null; enablePortal: boolean; portalOptOut: boolean }): Promise<PdfDoc["portal"]> {
+async function invoicePortal(company: Company, customer: { id: number; email: string | null; enablePortal: boolean; portalOptOut: boolean }): Promise<PdfDoc["portal"]> {
   if (!customer.enablePortal) return null;
   const p = await portalInfoFor(company, customer);
-  return p ? { url: pdfText(p.loginUrl), email: pdfText(p.email) } : null;
+  return p ? { url: p.loginUrl, displayUrl: pdfText(p.displayUrl), email: pdfText(p.email) } : null;
 }
 
 export async function invoicePdfData(companyId: number, invoiceId: number): Promise<PdfDoc | null> {

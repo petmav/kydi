@@ -82,7 +82,7 @@ const BUTTON: Record<DocKind, string> = { invoice: "View Invoice", estimate: "Vi
 
 /** Invoice emails point to the customer portal when the recipient has (or is about to get) access. */
 function portalSection(companyName: string, p: PortalInfo) {
-  return `<p style="margin:16px 0 0;padding:12px 14px;background:#f1f5f9;border-radius:6px;font-size:13px;color:#334155">You can view, download and pay all your invoices from ${esc(companyName)} in your customer portal: <a href="${esc(p.loginUrl)}" style="color:#1d4ed8">${esc(p.loginUrl)}</a><br>Sign in with <strong>${esc(p.email)}</strong>. First visit? Use the setup email we sent you, or “Forgot password?” on the sign-in page.</p>`;
+  return `<p style="margin:16px 0 0;padding:12px 14px;background:#f1f5f9;border-radius:6px;font-size:13px;color:#334155">You can view, download and pay all your invoices from ${esc(companyName)} in your customer portal: <a href="${esc(p.loginUrl)}" style="color:#1d4ed8">${esc(p.displayUrl)}</a><br>Sign in as <strong>${esc(p.email)}</strong> with a one-time code we email you, or with your password if you have set one.</p>`;
 }
 
 /** `portal` undefined: work it out without side effects (send preview); null: no portal section. */
