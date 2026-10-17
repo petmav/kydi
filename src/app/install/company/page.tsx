@@ -13,9 +13,10 @@ export const metadata: Metadata = { title: "Company profile" };
 export default async function InstallCompanyPage() {
   const user = await requireUser();
   if ((await db.companyUser.count({ where: { userId: user.id } })) > 0) redirect("/dashboard");
+  const firstRun = (await db.company.count()) === 0;
   return (
     <>
-      <InstallSteps current={2} />
+      {firstRun ? <InstallSteps current={2} /> : null}
       <h1 className="text-xl font-semibold">Tell us about your company</h1>
       <p className="mt-1 text-sm text-muted">
         These defaults drive invoice numbering, currency formatting and dates. You can change them later in Settings.

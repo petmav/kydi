@@ -9,7 +9,9 @@ previews on [Zenith Hosting](https://zenith.hosting).
 
 - **Workspaces:** install wizard (first administrator + company), multiple companies per user with a company
   switcher, owner powers, role presets (owner / manager / read-only), custom roles with ability dependencies,
-  members with email invitations or direct creation.
+  members with email invitations or direct creation, ownership transfer screen (Settings > Transfer ownership).
+  Invitees see pending invitations as a banner with Accept / Decline; a user without any company gets a
+  "No company" screen listing invitations and a "Create a company" action.
 - **Auth:** Argon2id password hashes, database-backed signed httpOnly session cookies, login throttling, password
   reset by email. Server actions use Next.js origin checks; every action and route is company-scoped and
   ability-checked on the server.
@@ -18,7 +20,9 @@ previews on [Zenith Hosting](https://zenith.hosting).
   placeholders, notifications, tax types (percentage/fixed, compound, sales/purchase), payment modes, units,
   expense categories, custom fields (10 types, validation rules, printed on PDFs), reusable notes, API tokens.
 - **Customers:** filtered/sorted/paginated list with bulk delete, portal access, billing/shipping addresses,
-  balance and available credit, activity and outstanding statements (HTML + PDF), apply-credit screen.
+  balance and available credit, activity and outstanding statements (HTML + PDF), apply-credit screen. The
+  customer screen is a split view (searchable list sorted by name or balance on the left) with a per-customer
+  cash-flow chart and period picker.
 - **Items** with units and default taxes; snapshots on documents.
 - **Invoices and estimates:** shared document editor (per-item or document taxes and discounts, tax-inclusive
   prices, compound taxes, multi-currency with exchange rates, notes, template picker, custom fields, item custom
@@ -38,8 +42,12 @@ previews on [Zenith Hosting](https://zenith.hosting).
 - **Dashboard:** receivables split (overdue / due soon / later), counters, cash-flow chart, recent lists.
 - **Reports:** sales by customer, sales by item, expenses, profit & loss (cash basis), tax summary — HTML preview
   and PDF export.
-- **Customers:** cash-flow figures per customer and statement email are available through the API
-  (`customers/{id}/stats`, `customers/{id}/statement/send`); the customer screen does not show them yet.
+- **Profile photos:** JPG/PNG/GIF/WebP up to 2 MB (signature-checked), stored under `/data/uploads/avatars`
+  and served by the authenticated route `/api/files/avatar/{userId}` (self, company co-members, administrator).
+- **Administration** (`/admin`, platform administrator only, reachable without a company): overview counters and
+  version, companies (edit name/address, change owner, delete), users (create/edit with platform role and a role
+  per company, delete), role presets (edit or add presets; saving syncs the role into every company), an empty
+  modules registry, and a system page describing fixed behaviour (PDF engine, storage, backups, currencies).
 - **Customer portal** at `/portal/<company-slug>`: separate login and sessions, invoices, estimates (accept or
   reject), payments, profile.
 - **REST API** under `/api/v1` (see below).
@@ -55,9 +63,8 @@ Not built yet (planned, in this order):
 - Exchange-rate providers and live rate lookup; the last rate used per currency is suggested instead.
 - Rich-text toolbar for notes and email templates (HTML is typed into a plain text area) and an allow-list HTML
   sanitiser (the current one strips scripts, event handlers and `javascript:` links only).
-- Ownership transfer screen, pending invitations on a "No company" screen, profile photos, and administration
-  screens beyond the read-only overview. Ownership transfer is available through the API.
-- Customer list split view and per-customer chart on the customer screen.
+- Administration: impersonation ("log in as"), backups, remote file disks, currency editing and PDF page setup
+  are not implemented (optional per the spec). Profile photos are shown as a square crop but not re-encoded.
 - Unicode PDF font: PDFs use the built-in Helvetica, so text outside Latin-1 does not render.
 - Purchasing module (suppliers, bills, supplier payments, credits, refunds, recurring costs, purchases report).
 - End-to-end smoke test suite.

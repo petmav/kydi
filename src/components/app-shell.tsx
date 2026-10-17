@@ -124,7 +124,7 @@ export function AppShell({
   quickCreate: QuickCreate[];
   companies: { id: number; name: string }[];
   currentCompanyId: number;
-  user: { name: string; email: string };
+  user: { name: string; email: string; avatarUrl?: string | null };
   canCreateCompany: boolean;
   isAdmin?: boolean;
   switchAction: (fd: FormData) => Promise<void>;
@@ -258,7 +258,12 @@ export function AppShell({
             label="User menu"
             button={
               <>
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-[11px] font-semibold text-white">{initials(user.name)}</span>
+                {user.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.avatarUrl} alt="" className="h-6 w-6 rounded-full border border-line object-cover" />
+                ) : (
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-[11px] font-semibold text-white">{initials(user.name)}</span>
+                )}
                 <span className="hidden max-w-[10rem] truncate md:inline">{user.name}</span>
               </>
             }

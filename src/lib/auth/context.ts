@@ -21,7 +21,7 @@ async function loadCompanyContext() {
     include: { company: true, role: true },
     orderBy: { createdAt: "asc" },
   });
-  if (memberships.length === 0) redirect("/install/company");
+  if (memberships.length === 0) redirect("/no-company");
 
   const jar = await cookies();
   const preferred = Number(jar.get(COMPANY_COOKIE)?.value ?? user.lastCompanyId ?? 0);
@@ -68,6 +68,13 @@ export async function requireOwner(): Promise<CompanyContext> {
   const ctx = await getCompanyContext();
   if (!ctx.isOwner) throw new ForbiddenError("Only the company owner can do this.");
   return ctx;
+}
+
+/** Platform administrator gate (spec §5.13) for actions; pages render <Forbidden /> instead. */
+export async function requireSuperAdmin() {
+  const user = await requireUser();
+  if (user.role !== "SUPER_ADMIN") throw new ForbiddenError("Only the platform administrator can do this.");
+  return user;
 }
 
 /** Parses a numeric route id or 404s. */

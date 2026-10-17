@@ -56,7 +56,6 @@ export async function deleteCompanyAction(_prev: ActionState, formData: FormData
     const ctx = await requireOwner();
     const confirm = String(formData.get("confirm") ?? "").trim();
     if (confirm !== ctx.company.name) return failure("Type the company name exactly to confirm.", { confirm: ["The name does not match."] });
-    if (ctx.memberships.length <= 1) return failure("You cannot delete your last remaining company.");
     await db.company.delete({ where: { id: ctx.companyId } });
     const jar = await cookies();
     jar.delete(COMPANY_COOKIE);

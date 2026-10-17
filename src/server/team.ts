@@ -214,17 +214,28 @@ export async function deleteRole(ctx: CompanyContext, id: number): Promise<TeamR
 export async function transferOwnership(ctx: CompanyContext, userId: number): Promise<TeamResult> {
   if (!ctx.isOwner) return fail("Only the company owner can transfer ownership.", undefined, 403);
   if (userId === ctx.user.id) return fail("You already own this company.", { userId: ["Choose another member."] });
-  const target = await db.companyUser.findUnique({ where: { companyId_userId: { companyId: ctx.companyId, userId } } });
+  return assignOwner(ctx.companyId, userId);
+}
+
+/**
+ * Makes `userId` (an existing member) the owner of the company: owner role for them, Manager preset for the
+ * previous owner, who keeps the membership. Used by the owner screen and by the platform administrator.
+ */
+export async function assignOwner(companyId: number, userId: number): Promise<TeamResult> {
+  const company = await db.company.findUnique({ where: { id: companyId }, select: { ownerId: true } });
+  if (!company) return fail("Company not found.", undefined, 404);
+  if (company.ownerId === userId) return { ok: true, id: userId };
+  const target = await db.companyUser.findUnique({ where: { companyId_userId: { companyId, userId } } });
   if (!target) return fail("Choose a member of this company.", { userId: ["Not a member of this company."] }, 422);
-  const roles = await db.role.findMany({ where: { companyId: ctx.companyId, name: { in: ["owner", "manager"] } } });
+  const roles = await db.role.findMany({ where: { companyId, name: { in: ["owner", "manager"] } } });
   const ownerRole = roles.find((r) => r.isOwner || r.name === "owner");
   const managerRole = roles.find((r) => r.name === "manager");
   if (!ownerRole) return fail("The owner role is missing for this company.");
   await db.$transaction(async (tx) => {
-    await tx.company.update({ where: { id: ctx.companyId }, data: { ownerId: userId } });
+    await tx.company.update({ where: { id: companyId }, data: { ownerId: userId } });
     await tx.companyUser.update({ where: { id: target.id }, data: { roleId: ownerRole.id } });
     if (managerRole) {
-      await tx.companyUser.update({ where: { companyId_userId: { companyId: ctx.companyId, userId: ctx.user.id } }, data: { roleId: managerRole.id } });
+      await tx.companyUser.updateMany({ where: { companyId, userId: company.ownerId }, data: { roleId: managerRole.id } });
     }
   });
   return { ok: true, id: userId };

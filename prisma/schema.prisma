@@ -25,6 +25,8 @@ model User {
   passwordHash  String
   role          UserRole  @default(USER)
   settings      Json      @default("{}")
+  /// Storage-relative path of the profile photo (spec §2.6), served by /api/files/avatar/[id].
+  avatarPath    String?
   lastCompanyId Int?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -762,4 +764,11 @@ model EmailLog {
 model JobState {
   key       String   @id
   lastRunAt DateTime
+}
+
+/// Installation-wide settings managed by the platform administrator (spec §3.2 "Global").
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
