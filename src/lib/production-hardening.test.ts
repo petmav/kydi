@@ -26,7 +26,7 @@ describe("production configuration guard", () => {
   it("refuses a missing, short or known SESSION_SECRET", () => {
     expect(checkProductionConfig({ ...base, SESSION_SECRET: undefined }).errors.join()).toMatch(/SESSION_SECRET is not set/);
     expect(checkProductionConfig({ ...base, SESSION_SECRET: "x".repeat(20) }).errors.join()).toMatch(/too short/);
-    for (const known of ["dev-only-session-secret-please-change-0123456789", "retired-preview-session-secret", "a".repeat(40)]) {
+    for (const known of ["dev-only-session-secret-please-change-0123456789", "kydi-insecure-development-encryption-key", "a".repeat(40)]) {
       expect(checkProductionConfig({ ...base, SESSION_SECRET: known }).errors.join(), known).toMatch(/SESSION_SECRET/);
     }
   });

@@ -3,18 +3,24 @@
  * `src/instrumentation.ts` calls it at boot and exits with a clear message when anything is fatal.
  */
 
+import { createHash } from "node:crypto";
+
 /** Values that have appeared in this repository, its examples or its preview manifest. Never valid in production. */
 export const KNOWN_WEAK_SECRETS = new Set([
   "kydi-insecure-development-secret",
   "kydi-insecure-development-encryption-key",
   "dev-only-session-secret-please-change-0123456789",
-  "retired-preview-session-secret",
-  "retired-preview-cron-secret",
   "dev-cron-secret",
   "changeme",
   "change-me",
   "secret",
   "password",
+]);
+
+/** SHA-256 of retired preview secrets, kept as hashes so the values themselves are not in the repository. */
+const RETIRED_SECRET_HASHES = new Set([
+  "7be26c386082f731eedbc0b9d35beaaa11c035dac89f0312bbaa9a83dbc8e589",
+  "86450946dbe46cace8a07ee29ad41ae0258ef11ae7ed49f6422c038679a14c9c",
 ]);
 
 export type ConfigReport = { errors: string[]; warnings: string[] };
@@ -24,6 +30,7 @@ type EnvMap = Record<string, string | undefined>;
 function weak(value: string): boolean {
   const v = value.trim();
   if (KNOWN_WEAK_SECRETS.has(v) || KNOWN_WEAK_SECRETS.has(v.toLowerCase())) return true;
+  if (RETIRED_SECRET_HASHES.has(createHash("sha256").update(v).digest("hex"))) return true;
   if (/^(.)\1+$/.test(v)) return true; // one repeated character
   if (/please-change|change-?me|example|placeholder/i.test(v)) return true;
   return new Set(v).size < 8; // too little variety to be random

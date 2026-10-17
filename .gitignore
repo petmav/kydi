@@ -37,3 +37,6 @@ coverage
 *.tmp.mjs
 playwright-report/
 test-results/
+
+# Office lock files
+~$*
