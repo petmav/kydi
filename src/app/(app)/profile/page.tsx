@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Card, CardBody, CardHeader, PageHeader } from "@/components/ui/primitives";
 import { getCompanyContext } from "@/lib/auth/context";
 import { db } from "@/lib/db";
-import { ProfileForm, PasswordForm, SessionsCard } from "./forms";
+import { AvatarForm, ProfileForm, PasswordForm, SessionsCard } from "./forms";
 
 export const metadata: Metadata = { title: "My profile" };
 
@@ -13,6 +13,12 @@ export default async function ProfilePage() {
     <>
       <PageHeader title="My profile" description="Manage your personal details and sign-in security." />
       <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="lg:col-span-2">
+          <CardHeader title="Profile photo" description="Shown in the top bar and to teammates in your companies." />
+          <CardBody>
+            <AvatarForm name={ctx.user.name} avatarUrl={ctx.user.avatarPath ? `/api/files/avatar/${ctx.user.id}?v=${ctx.user.updatedAt.getTime()}` : null} />
+          </CardBody>
+        </Card>
         <Card>
           <CardHeader title="Personal details" description="Your name and email are shown to teammates." />
           <CardBody>

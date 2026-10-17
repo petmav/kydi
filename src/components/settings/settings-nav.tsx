@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-export function SettingsNav({ items }: { items: { href: string; label: string }[] }) {
+export function SettingsNav({ items, exact = [] }: { items: { href: string; label: string }[]; exact?: string[] }) {
   const pathname = usePathname();
   return (
     <nav aria-label="Settings">
       <ul className="flex gap-1 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
         {items.map((i) => {
-          const active = pathname === i.href || pathname.startsWith(`${i.href}/`);
+          const active = pathname === i.href || (!exact.includes(i.href) && pathname.startsWith(`${i.href}/`));
           return (
             <li key={i.href} className="shrink-0">
               <Link

@@ -16,6 +16,7 @@ export function settingsNavItems(ctx: CompanyContext) {
     { href: "/settings/expense-categories", label: "Expense categories", show: ctx.can("view-expense") },
     { href: "/settings/exchange-rates", label: "Exchange rate provider", show: ctx.can("view-exchange-rate-provider") },
     { href: "/settings/mail", label: "Mail configuration", show: ctx.isOwner },
+    { href: "/settings/ownership", label: "Transfer ownership", show: ctx.isOwner },
     { href: "/settings/api-tokens", label: "API tokens", show: true },
     { href: "/settings/portal", label: "Customer portal", show: ctx.isOwner },
   ];

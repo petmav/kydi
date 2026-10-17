@@ -17,6 +17,11 @@ import type { SearchParams } from "@/lib/list";
 import { customerBalances } from "@/server/customers";
 import { activityStatement, outstandingStatement } from "@/server/statement";
 import { deleteCustomerAction } from "../actions";
+import { CashFlowChart } from "@/components/cash-flow-chart";
+import { cn } from "@/lib/utils";
+import { withParams } from "@/lib/list";
+import { cashFlow, resolvePeriod } from "@/server/dashboard";
+import { CustomerSwitcher } from "./switcher";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -46,9 +51,18 @@ export default async function CustomerDetailPage({ params, searchParams }: { par
   const billing = address(c, "billing");
   const shipping = address(c, "shipping");
   const portalUrl = `${await getBaseUrl()}/portal/${ctx.company.slug}/login`;
+  const period = resolvePeriod(s, one("period") || undefined);
+  const chart = await cashFlow(ctx.companyId, period, c.id);
+  const baseMoney = (v: number) => formatMoney(v, s.currency, s.locale);
+  const compact = (v: number) => new Intl.NumberFormat(s.locale, { style: "currency", currency: s.currency, notation: "compact", maximumFractionDigits: 1 }).format(v / 100);
+  const chartLabel = (k: string) => (chart.byDay ? formatDate(k, "MMM d") : formatDate(`${k}-01`, chart.rows.length > 12 ? "MMM yy" : "MMM"));
 
   return (
-    <>
+    <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="hidden lg:block">
+        <CustomerSwitcher companyId={ctx.companyId} currentId={c.id} sp={sp} locale={s.locale} />
+      </aside>
+      <div className="min-w-0">
       <PageHeader
         title={c.name}
         description={[c.companyName, c.email].filter(Boolean).join(" · ") || undefined}
@@ -183,8 +197,51 @@ export default async function CustomerDetailPage({ params, searchParams }: { par
           </form>
           {tab === "activity" ? <Activity companyId={ctx.companyId} customerId={c.id} from={from} to={to} money={money} df={df} /> : <Outstanding companyId={ctx.companyId} customerId={c.id} asOf={to} money={money} df={df} />}
         </Card>
+        <Card className="lg:col-span-3">
+          <CardHeader
+            title="Cash flow"
+            description={`${period.label}: ${df(period.from)} – ${df(period.to)}. Company currency (${s.currency}).`}
+            actions={
+              <div className="inline-flex overflow-hidden rounded-md border border-slate-300" role="group" aria-label="Period">
+                {[
+                  { key: "this", label: "This year" },
+                  { key: "previous", label: "Previous year" },
+                  { key: "last12", label: "Last 12 months" },
+                ].map((p) => (
+                  <Link
+                    key={p.key}
+                    href={`/customers/${c.id}${withParams(sp, { period: p.key })}`}
+                    aria-current={period.key === p.key ? "true" : undefined}
+                    className={cn("px-3 py-1.5 text-sm focus-ring", period.key === p.key ? "bg-brand-700 text-white" : "bg-white text-ink-2 hover:bg-subtle")}
+                  >
+                    {p.label}
+                  </Link>
+                ))}
+              </div>
+            }
+          />
+          <CardBody>
+            <dl className="mb-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+              {(
+                [
+                  ["Total sales", chart.totals.sales],
+                  ["Total receipts", chart.totals.receipts],
+                  ["Total expenses", chart.totals.expenses],
+                  ["Net income", chart.totals.net],
+                ] as const
+              ).map(([k, v]) => (
+                <div key={k} className="rounded-md border border-line px-3 py-2">
+                  <dt className="text-xs text-muted">{k}</dt>
+                  <dd className="tabular font-semibold">{baseMoney(v)}</dd>
+                </div>
+              ))}
+            </dl>
+            <CashFlowChart rows={chart.rows} labelFor={chartLabel} format={baseMoney} compact={compact} />
+          </CardBody>
+        </Card>
       </div>
-    </>
+      </div>
+    </div>
   );
 }
 

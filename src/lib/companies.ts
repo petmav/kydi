@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { ROLE_PRESETS } from "@/lib/abilities";
+import { getRolePresets } from "@/lib/role-presets";
 import { saveCompanySettings, type SettingKey } from "@/lib/settings";
 import { randomToken } from "@/lib/auth/tokens";
 import { slugify } from "@/lib/utils";
@@ -29,6 +29,7 @@ async function uniqueSlug(tx: Tx, name: string): Promise<string> {
 
 /** Spec §3.1 "On create": owner + membership, role presets, payment methods, units, settings sheet. */
 export async function createCompanyForUser(userId: number, input: NewCompanyInput, tx?: Tx) {
+  const presets = await getRolePresets();
   const run = async (t: Tx) => {
     const company = await t.company.create({
       data: {
@@ -40,7 +41,7 @@ export async function createCompanyForUser(userId: number, input: NewCompanyInpu
       },
     });
     let ownerRoleId = 0;
-    for (const preset of ROLE_PRESETS) {
+    for (const preset of presets) {
       const role = await t.role.create({
         data: { companyId: company.id, name: preset.name, title: preset.title, abilities: preset.abilities, isOwner: preset.isOwner },
       });
