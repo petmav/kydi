@@ -7,6 +7,7 @@ import type { FieldErrors } from "@/lib/action";
 import { hashPassword } from "@/lib/auth/password";
 import { isCurrency } from "@/lib/intl-data";
 import { saveCustomFieldAnswers, validateCustomFieldAnswers } from "@/lib/custom-fields";
+import { nextOptOut } from "@/domain/portal-access";
 
 const opt = (max = 255) =>
   z
@@ -101,9 +102,7 @@ export async function saveCustomer(
   if (input.enablePortal && !input.email) {
     return { ok: false, error: "Portal access requires an email address.", fieldErrors: { email: ["Required when portal access is enabled."] } };
   }
-  if (input.enablePortal && !input.password && !existing?.portalPasswordHash) {
-    return { ok: false, error: "Set a portal password.", fieldErrors: { password: ["Required when enabling portal access."] } };
-  }
+  // No password is required: customers choose their own through the setup email or “Forgot password?”.
 
   const cf = await validateCustomFieldAnswers(ctx.companyId, "Customer", customFieldSource);
   if (!cf.ok) return { ok: false, error: "Please correct the highlighted fields.", fieldErrors: cf.errors };
@@ -113,6 +112,8 @@ export async function saveCustomer(
   const data: Prisma.CustomerUncheckedCreateInput = {
     ...rest,
     companyId: ctx.companyId,
+    // Unticking "Enable portal" on purpose stops invoices from switching access back on.
+    portalOptOut: nextOptOut(existing ? { enablePortal: existing.enablePortal, optOut: existing.portalOptOut } : null, !!input.enablePortal),
     ...(password ? { portalPasswordHash: await hashPassword(password) } : {}),
   };
   const saved = await db.$transaction(async (tx) => {

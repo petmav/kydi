@@ -205,6 +205,8 @@ model Customer {
   taxId              String?
   currency           String
   enablePortal       Boolean  @default(false)
+  /// Staff switched portal access off on purpose; invoices then never switch it back on automatically.
+  portalOptOut       Boolean  @default(false)
   portalPasswordHash String?
   billingName        String?
   billingStreet1     String?

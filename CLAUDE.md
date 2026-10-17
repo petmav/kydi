@@ -49,6 +49,8 @@ PDF: `src/pdf/document-pdf.tsx` and `src/pdf/simple-pdf.tsx` hold the react-pdf 
 
 Online payments (`server/online-payments.ts`, `lib/stripe.ts`): the portal "Pay" button creates an `OnlinePayment` row (the idempotency key) and a Stripe Checkout session, or a demo checkout page. `recordOnlinePayment` in `server/payments.ts` turns a confirmed row into a Payment exactly once (row lock), and both the return URL and the webhook `api/payments/stripe/[companyId]` call it. Never mark something paid from the redirect alone; re-read the session from Stripe.
 
+Automatic portal access (`domain/portal-access.ts` rules, `server/portal-access.ts`): every path that makes an invoice sent (`sendDocumentEmail`, `markInvoiceSent`, `saveInvoice` with `send`) calls `ensurePortalAccess`, which enables the customer's portal and emails a setup link (a `PortalResetToken`, 14 days, `?setup=1`) to the customer's own address. Setup links never go into the invoice email itself, because staff can CC others and the email log stores the body. `Customer.portalOptOut` remembers staff switching access off.
+
 Email (`server/mailer.ts`, `mail-transport.ts`, `mail-settings.ts`): the driver is picked in this order: company mail config if enabled, then the platform config, then `SMTP_*` env vars, then stdout. Stored secrets are encrypted and never sent to the browser. A blank secret input keeps the stored value.
 
 ## Conventions

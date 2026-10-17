@@ -29,13 +29,13 @@ export function PortalForgotForm({ action }: { action: FormAction }) {
   );
 }
 
-export function PortalResetForm({ action, token }: { action: FormAction; token: string }) {
+export function PortalResetForm({ action, token, submitLabel = "Update password" }: { action: FormAction; token: string; submitLabel?: string }) {
   return (
     <Form action={action} className="space-y-4" showErrorSummary>
       <input type="hidden" name="token" value={token} />
       <Field name="password" type="password" label="New password" required autoComplete="new-password" />
       <Field name="confirm" type="password" label="Confirm new password" required autoComplete="new-password" />
-      <SubmitButton className="w-full" pendingLabel="Saving…">Update password</SubmitButton>
+      <SubmitButton className="w-full" pendingLabel="Saving…">{submitLabel}</SubmitButton>
     </Form>
   );
 }

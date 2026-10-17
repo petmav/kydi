@@ -61,6 +61,8 @@ export const SETTING_DEFAULTS = {
   default_invoice_template: "invoice1",
   default_estimate_template: "estimate1",
   customer_portal_page_title: "",
+  /** Sending an invoice switches the customer's portal access on and emails a setup link (YES/NO). */
+  auto_portal_access: "YES",
 } as const;
 
 export type SettingKey = keyof typeof SETTING_DEFAULTS;

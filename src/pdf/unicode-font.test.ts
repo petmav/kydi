@@ -44,6 +44,7 @@ const doc: PdfDoc = {
   lines: [{ name: "Συμβουλευτική", description: "Консультация", quantity: "1", price: "€100.00", discount: null, tax: null, amount: "€100.00", extra: [] }],
   totals: [{ label: "Total", value: "€100.00", strong: true }],
   notes: [{ text: "Ευχαριστούμε · Спасибо", bold: false, heading: false }],
+  portal: { url: "https://kydi.example.org/portal/kydi-test/login", email: "billing@example.org" },
   footer: "Kydi Test Ltd · INV-000001",
 };
 
@@ -54,6 +55,8 @@ describe("bundled Unicode PDF font", () => {
     expect(pdf.subarray(0, 5).toString("latin1")).toBe("%PDF-");
     expect(pdf.toString("latin1")).toMatch(/\/BaseFont\s*\/[A-Z]{6}\+DejaVuSans/);
     expect(pdf.toString("latin1")).not.toMatch(/\/BaseFont\s*\/Helvetica/);
+    // The portal box is a clickable link to the portal sign-in page.
+    expect(pdf.toString("latin1")).toMatch(/\/URI\s*\(https:\/\/kydi\.example\.org\/portal\/kydi-test\/login\)/);
     const cmaps = streams(pdf).filter((s) => s.includes("begincmap")).join("\n").toUpperCase();
     // ToUnicode entries for: Greek small epsilon, Cyrillic capital KA, L with stroke, S with caron, c with caron, euro sign.
     for (const cp of ["03B5", "041A", "0141", "0160", "010D", "20AC"]) expect(cmaps, `U+${cp}`).toContain(`<${cp}>`);

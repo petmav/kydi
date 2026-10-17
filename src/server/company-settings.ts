@@ -102,6 +102,7 @@ export const SETTINGS_SECTIONS = {
   }),
   portal: z.object({
     customer_portal_page_title: z.string().trim().max(120),
+    auto_portal_access: yesNo,
   }),
 } as const;
 

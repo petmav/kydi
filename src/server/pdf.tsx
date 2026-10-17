@@ -11,6 +11,7 @@ import { taxSummary } from "@/domain/totals";
 import { DocumentPdf, type PdfDoc } from "@/pdf/document-pdf";
 import { SimplePdf, type SimplePdfData } from "@/pdf/simple-pdf";
 import { htmlToBlocks, pdfText } from "@/pdf/html";
+import { portalInfoFor } from "./portal-access";
 
 type Company = NonNullable<Awaited<ReturnType<typeof db.company.findUnique>>>;
 
@@ -44,6 +45,13 @@ async function placeholderValues(company: Company, customer: Record<string, unkn
     ...(await customFieldPlaceholders(company.id, "Customer", customer.id)),
     ...(await customFieldPlaceholders(company.id, model, modelId)),
   };
+}
+
+/** Portal box on invoice PDFs: only when the customer already has portal access (drafts stay silent). */
+async function invoicePortal(company: Company, customer: { email: string | null; enablePortal: boolean; portalOptOut: boolean }): Promise<PdfDoc["portal"]> {
+  if (!customer.enablePortal) return null;
+  const p = await portalInfoFor(company, customer);
+  return p ? { url: pdfText(p.loginUrl), email: pdfText(p.email) } : null;
 }
 
 export async function invoicePdfData(companyId: number, invoiceId: number): Promise<PdfDoc | null> {
@@ -117,6 +125,7 @@ export async function invoicePdfData(companyId: number, invoiceId: number): Prom
     })),
     totals,
     notes: htmlToBlocks(fillPlaceholders(inv.notes ?? "", values)),
+    portal: await invoicePortal(company, inv.customer),
     footer: `${pdfText(company.name)} · ${inv.invoiceNumber}`,
   };
 }
@@ -176,6 +185,7 @@ export async function estimatePdfData(companyId: number, estimateId: number): Pr
     })),
     totals,
     notes: htmlToBlocks(fillPlaceholders(est.notes ?? "", values)),
+    portal: null,
     footer: `${pdfText(company.name)} · ${est.estimateNumber}`,
   };
 }

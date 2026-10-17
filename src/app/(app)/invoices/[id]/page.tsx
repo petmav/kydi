@@ -121,6 +121,18 @@ export default async function InvoiceDetailPage({ params, searchParams }: { para
               <DescriptionList
                 items={[
                   { label: "Customer", value: <Link href={`/customers/${inv.customerId}`} className="text-brand-700 hover:underline">{inv.customer.name}</Link> },
+                  {
+                    label: "Customer portal",
+                    value: inv.customer.enablePortal && inv.customer.email
+                      ? `Access on · signs in with ${inv.customer.email}`
+                      : !inv.customer.email
+                        ? "No email address, so the customer cannot get portal access"
+                        : inv.customer.portalOptOut
+                          ? "Switched off for this customer"
+                          : ctx.settings.auto_portal_access === "YES"
+                            ? "Switches on when the invoice is sent"
+                            : "Off",
+                  },
                   { label: "Date", value: df(inv.invoiceDate) },
                   { label: "Due date", value: df(inv.dueDate) },
                   { label: "Reference", value: inv.referenceNumber },

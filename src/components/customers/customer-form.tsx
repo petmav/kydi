@@ -119,8 +119,7 @@ export function CustomerForm({
                     label="Password"
                     type="password"
                     autoComplete="new-password"
-                    required={!values.hasPassword}
-                    hint={values.hasPassword ? "Leave blank to keep the current password." : "At least 10 characters."}
+                    hint={values.hasPassword ? "Leave blank to keep the current password." : "Optional. Leave blank and the customer chooses their own password from the setup email sent with their first invoice, or with “Forgot password?”."}
                   />
                   <Field name="confirm" label="Confirm password" type="password" autoComplete="new-password" />
                 </div>

@@ -1,4 +1,4 @@
-import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Image, Link, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Block } from "./html";
 import { fontBold, fontRegular } from "./fonts";
 
@@ -21,6 +21,8 @@ export type PdfDoc = {
   lines: PdfLine[];
   totals: { label: string; value: string; strong?: boolean; boxed?: boolean }[];
   notes: Block[];
+  /** Customer portal pointer on invoices: login URL and the customer's sign-in email (never a password). */
+  portal: { url: string; email: string } | null;
   footer: string;
 };
 
@@ -232,6 +234,19 @@ export function DocumentPdf({ d }: { d: PdfDoc }) {
           <View style={{ marginTop: 20 }} wrap={false}>
             <Text style={[s.h, { marginBottom: 3 }]}>Notes</Text>
             <Blocks blocks={d.notes} />
+          </View>
+        ) : null}
+        {d.portal ? (
+          <View style={{ marginTop: 20, padding: 10, borderWidth: 1, borderColor: LIGHT, borderRadius: 4 }} wrap={false}>
+            <Text style={[s.h, { marginBottom: 3 }]}>View and pay online</Text>
+            <Text style={s.muted}>
+              Customer portal:{" "}
+              <Link src={d.portal.url} style={{ color: "#1d4ed8" }}>
+                {d.portal.url}
+              </Link>
+            </Text>
+            <Text style={s.muted}>Sign in with: {d.portal.email}</Text>
+            <Text style={s.small}>First visit? Use the setup email you received, or “Forgot password?” on the sign-in page.</Text>
           </View>
         ) : null}
         <Text style={[s.small, { position: "absolute", bottom: 20, left: 40, right: 40, textAlign: "center" }]} render={({ pageNumber, totalPages }) => `${d.footer} · Page ${pageNumber} of ${totalPages}`} fixed />

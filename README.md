@@ -86,6 +86,12 @@ previews on [Zenith Hosting](https://zenith.hosting).
   modules registry, and a system page describing fixed behaviour (PDF engine, storage, backups, currencies).
 - **Customer portal** at `/portal/<company-slug>`: separate login and sessions, invoices, estimates (accept or
   reject), payments, profile.
+- **Automatic portal access** (Settings > Customer portal, on by default): when an invoice is sent (emailed,
+  "Mark as sent", save-and-send or recurring auto-send), the customer's portal access is switched on permanently and,
+  if they have no password yet, a one-time setup link (valid 14 days) is emailed to the customer's own address only.
+  No password is ever generated or printed. Invoice emails and invoice PDFs show the portal sign-in link and the
+  customer's sign-in email. A later invoice to the same customer reuses the same account. Customers without an email
+  are skipped, and unticking "Enable portal" on a customer is remembered so invoices never switch it back on.
 - **Online payments** (Settings > Online payments, owner only): portal customers pay an invoice's full outstanding
   balance with a "Pay" button through Stripe Checkout (restricted API key and webhook signing secret encrypted at
   rest; REST API called without the Stripe SDK, API version pinned to `2026-08-26.dahlia`). A confirmed checkout

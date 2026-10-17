@@ -11,6 +11,7 @@ import { invoiceAllowEdit, mapTemplate, recomputeBalance } from "@/domain/status
 import { computeCreditNote, type CreditSource } from "@/domain/credit";
 import { buildDocument, copyLines, logExchangeRate, totalsData, writeLines, type DocumentInput } from "./documents";
 import { nextNumber } from "./numbers";
+import { ensurePortalAccess } from "./portal-access";
 
 export type Result = { ok: true; id: number } | { ok: false; error: string; fieldErrors?: FieldErrors; status?: number };
 
@@ -116,6 +117,8 @@ export async function saveInvoice(ctx: CompanyContext, id: number | null, input:
       await recalcInvoice(tx, inv.id);
       return inv;
     });
+    // "Save and send" creates the invoice as SENT: give the recipient portal access (server/portal-access.ts).
+    if (send && !existing) await ensurePortalAccess(ctx.companyId, saved.customerId);
     return { ok: true, id: saved.id };
   } catch (e) {
     if (e instanceof DomainError) return { ok: false, error: e.message, fieldErrors: e.fieldErrors };
@@ -154,6 +157,7 @@ export async function markInvoiceSent(ctx: CompanyContext, id: number): Promise<
   if (!inv) return { ok: false, error: "Invoice not found.", status: 404 };
   if (inv.status !== "DRAFT") return { ok: false, error: "Only draft invoices can be marked as sent." };
   await db.invoice.update({ where: { id }, data: { status: "SENT", sent: true } });
+  await ensurePortalAccess(ctx.companyId, inv.customerId);
   return { ok: true, id };
 }
 

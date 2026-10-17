@@ -12,6 +12,7 @@ import { senderFor } from "@/server/mail-transport";
 import { getBaseUrl } from "@/lib/url";
 import { invoiceTransitions, estimateTransitions } from "@/domain/status";
 import { pdfFor } from "./pdf";
+import { ensurePortalAccess, portalInfoFor, type PortalInfo } from "./portal-access";
 
 export type DocKind = "invoice" | "estimate" | "payment";
 export type EmailFields = { to: string; cc?: string | null; bcc?: string | null; subject: string; body: string };
@@ -66,34 +67,44 @@ export async function emailDefaults(companyId: number, kind: DocKind, id: number
   };
 }
 
-export function layout(opts: { companyName: string; logoUrl: string | null; body: string; buttonLabel?: string; link?: string }) {
+export function layout(opts: { companyName: string; logoUrl: string | null; body: string; buttonLabel?: string; link?: string; extra?: string }) {
   return `<!doctype html><html><body style="margin:0;background:#f8fafc;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#0f172a">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:24px 0"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border:1px solid #e2e8f0;border-radius:6px">
 <tr><td style="padding:20px 28px;border-bottom:1px solid #e2e8f0">${opts.logoUrl ? `<img src="${opts.logoUrl}" alt="${esc(opts.companyName)}" style="max-height:40px">` : `<strong style="font-size:18px">${esc(opts.companyName)}</strong>`}</td></tr>
 <tr><td style="padding:24px 28px;font-size:14px;line-height:1.6">${opts.body}
-${opts.link && opts.buttonLabel ? `<p style="margin:24px 0"><a href="${opts.link}" style="background:#1d4ed8;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px;display:inline-block;font-weight:600">${esc(opts.buttonLabel)}</a></p>` : ""}</td></tr>
+${opts.link && opts.buttonLabel ? `<p style="margin:24px 0"><a href="${opts.link}" style="background:#1d4ed8;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px;display:inline-block;font-weight:600">${esc(opts.buttonLabel)}</a></p>` : ""}${opts.extra ?? ""}</td></tr>
 <tr><td style="padding:14px 28px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b">Sent with Kydi</td></tr>
 </table></td></tr></table></body></html>`;
 }
 
 const BUTTON: Record<DocKind, string> = { invoice: "View Invoice", estimate: "View Estimate", payment: "View Payment" };
 
-export async function renderDocumentEmail(companyId: number, kind: DocKind, id: number, fields: EmailFields, link = "#") {
+/** Invoice emails point to the customer portal when the recipient has (or is about to get) access. */
+function portalSection(companyName: string, p: PortalInfo) {
+  return `<p style="margin:16px 0 0;padding:12px 14px;background:#f1f5f9;border-radius:6px;font-size:13px;color:#334155">You can view, download and pay all your invoices from ${esc(companyName)} in your customer portal: <a href="${esc(p.loginUrl)}" style="color:#1d4ed8">${esc(p.loginUrl)}</a><br>Sign in with <strong>${esc(p.email)}</strong>. First visit? Use the setup email we sent you, or “Forgot password?” on the sign-in page.</p>`;
+}
+
+/** `portal` undefined: work it out without side effects (send preview); null: no portal section. */
+export async function renderDocumentEmail(companyId: number, kind: DocKind, id: number, fields: EmailFields, link = "#", portal?: PortalInfo | null) {
   const m = await placeholderMap(companyId, kind, id);
   if (!m) return null;
   const base = await getBaseUrl();
+  const p = kind !== "invoice" ? null : portal !== undefined ? portal : await portalInfoFor(m.company, m.doc.customer);
   const subject = fillPlaceholders(fields.subject, m.values, false).replace(/[\r\n]+/g, " ").trim();
   const body = sanitizeHtml(fillPlaceholders(fields.body, m.values));
   const label = kind === "invoice" && m.doc.type === "CREDIT_NOTE" ? "View Credit Note" : BUTTON[kind];
-  return { subject, html: layout({ companyName: m.company.name, logoUrl: m.company.logoPath ? `${base}/api/files/logo/${m.company.uniqueHash}` : null, body, buttonLabel: label, link }), m };
+  return { subject, html: layout({ companyName: m.company.name, logoUrl: m.company.logoPath ? `${base}/api/files/logo/${m.company.uniqueHash}` : null, body, buttonLabel: label, link, extra: p ? portalSection(m.company.name, p) : "" }), m };
 }
 
 /** Sends a document email: log row + public link, optional PDF, status effects (spec §4.11). */
 export async function sendDocumentEmail(companyId: number, kind: DocKind, id: number, fields: EmailFields): Promise<{ ok: true; transport: string } | { ok: false; error: string }> {
   const token = randomToken(32);
   const link = `${await getBaseUrl()}/customer/${kind}s/view/${token}`;
-  const r = await renderDocumentEmail(companyId, kind, id, fields, link);
+  // Switch portal access on first, so this email and the attached PDF can point the customer to the portal.
+  const invoice = kind === "invoice" ? await db.invoice.findFirst({ where: { id, companyId }, select: { customerId: true } }) : null;
+  const portal = invoice ? await ensurePortalAccess(companyId, invoice.customerId) : null;
+  const r = await renderDocumentEmail(companyId, kind, id, fields, link, portal);
   if (!r) return { ok: false, error: "Document not found." };
   const attach = r.m.settings[`${kind}_email_attachment`] === "YES";
   const pdf = attach ? await pdfFor(kind, companyId, id) : null;
