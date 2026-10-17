@@ -7,8 +7,11 @@ import { htmlToBlocks, pdfText } from "@/pdf/html";
 import type { PdfSection, SimplePdfData } from "@/pdf/simple-pdf";
 import { companyAssets } from "./pdf";
 import { activityStatement, outstandingStatement } from "./statement";
+import { purchasesReport, supplierCashTotals } from "./purchasing";
+import { payablesSplit } from "@/domain/purchasing";
+import { addDaysIso, todayIn } from "@/lib/dates";
 
-export const REPORT_TYPES = ["sales-customers", "sales-items", "expenses", "profit-loss", "taxes"] as const;
+export const REPORT_TYPES = ["sales-customers", "sales-items", "expenses", "profit-loss", "taxes", "purchases"] as const;
 export type ReportType = (typeof REPORT_TYPES)[number];
 const TITLES: Record<ReportType, string> = {
   "sales-customers": "Sales by customer",
@@ -16,6 +19,7 @@ const TITLES: Record<ReportType, string> = {
   expenses: "Expenses",
   "profit-loss": "Profit & loss",
   taxes: "Tax summary",
+  purchases: "Purchases",
 };
 
 /** Report data (spec §8). All amounts are base (company-currency) values. */
@@ -70,9 +74,11 @@ export async function buildReport(companyId: number, type: ReportType, from: str
     const income = Number((await db.payment.aggregate({ where: { companyId, paymentDate: range }, _sum: { baseAmount: true } }))._sum.baseAmount ?? 0);
     const byCat = await db.expense.groupBy({ by: ["categoryId"], where: { companyId, expenseDate: range }, _sum: { baseAmount: true } });
     const cats = new Map((await db.expenseCategory.findMany({ where: { companyId } })).map((c) => [c.id, c.name]));
-    const totalExp = byCat.reduce((s, c) => s + Number(c._sum.baseAmount ?? 0), 0);
+    const supplier = await supplierCashTotals(companyId, range.gte, range.lte);
+    const totalExp = byCat.reduce((s, c) => s + Number(c._sum.baseAmount ?? 0), 0) + supplier.payments - supplier.refunds;
+    const purchaseRows = supplier.payments || supplier.refunds ? [["Supplier payments", money(supplier.payments)], ["Supplier refunds", money(-supplier.refunds)]] : [];
     sections.push({ heading: "Income", table: { columns: [{ label: "Source", flex: 3 }, { label: "Amount", align: "right" }], rows: [["Payments received", money(income)]] } });
-    sections.push({ heading: "Expenses", table: { columns: [{ label: "Category", flex: 3 }, { label: "Amount", align: "right" }], rows: byCat.map((c) => [cats.get(c.categoryId) ?? "Uncategorized", money(Number(c._sum.baseAmount ?? 0))]), footer: ["Total expenses", money(totalExp)] } });
+    sections.push({ heading: "Expenses", table: { columns: [{ label: "Category", flex: 3 }, { label: "Amount", align: "right" }], rows: [...byCat.map((c) => [cats.get(c.categoryId) ?? "Uncategorized", money(Number(c._sum.baseAmount ?? 0))]), ...purchaseRows], footer: ["Total expenses", money(totalExp)] } });
     sections.push({ summary: [{ label: "Income", value: money(income) }, { label: "Total expenses", value: money(totalExp) }, { label: "Net profit", value: money(income - totalExp), strong: true, boxed: true }], note: "Cash basis: income is payments received in the period; unpaid invoices are excluded." });
   }
 
@@ -89,6 +95,12 @@ export async function buildReport(companyId: number, type: ReportType, from: str
       const k = `${t.taxType.name}${t.taxType.calculationType === "PERCENTAGE" ? ` (${t.taxType.percent}%)` : ""}`;
       inMap.set(k, (inMap.get(k) ?? 0) + Math.round(Number(t.amount) * t.expense.exchangeRate));
     }
+    // Bill taxes minus supplier-credit taxes (purchasing module), non-void documents dated in range.
+    const billTaxes = await db.billLineTax.findMany({ where: { billLine: { bill: { companyId, documentDate: range, status: { not: "VOID" } } } }, include: { billLine: { select: { bill: { select: { type: true } } } } } });
+    for (const t of billTaxes) {
+      const k = `${t.name}${t.calculationType === "PERCENTAGE" ? ` (${t.percent}%)` : ""}`;
+      inMap.set(k, (inMap.get(k) ?? 0) + (t.billLine.bill.type === "SUPPLIER_CREDIT" ? -1 : 1) * Number(t.baseAmount));
+    }
     const outTotal = [...outMap.values()].reduce((a, b) => a + b, 0);
     const inTotal = [...inMap.values()].reduce((a, b) => a + b, 0);
     const cols = [{ label: "Tax", flex: 3 }, { label: "Amount", align: "right" as const }];
@@ -96,6 +108,36 @@ export async function buildReport(companyId: number, type: ReportType, from: str
     sections.push({ heading: "Input tax (purchases)", table: { columns: cols, rows: [...inMap].map(([k, v]) => [pdfText(k), money(v)]), footer: ["Total input tax", money(inTotal)] } });
     const balance = outTotal - inTotal;
     sections.push({ summary: [{ label: balance >= 0 ? "Tax payable" : "Tax refundable", value: money(Math.abs(balance)), strong: true, boxed: true }] });
+  }
+
+  if (type === "purchases") {
+    const r = await purchasesReport(companyId, from, to);
+    sections.push({
+      heading: "By supplier",
+      table: {
+        columns: [{ label: "Supplier", flex: 2.2 }, { label: "Bills", align: "right" }, { label: "Credits", align: "right" }, { label: "Payments", align: "right" }, { label: "Refunds", align: "right" }],
+        rows: r.rows.map((x) => [pdfText(x.supplier), money(x.bills), money(x.credits), money(x.payments), money(x.refunds)]),
+        footer: ["Total", money(r.totals.bills), money(r.totals.credits), money(r.totals.payments), money(r.totals.refunds)],
+      },
+    });
+    sections.push({
+      heading: "Bills by status",
+      table: {
+        columns: [{ label: "Supplier", flex: 2.2 }, { label: "Draft", align: "right" }, { label: "Open", align: "right" }, { label: "Void", align: "right" }],
+        rows: r.rows.map((x) => [pdfText(x.supplier), money(x.draft), money(x.open), money(x.void)]),
+      },
+    });
+    const today = todayIn(settings.time_zone);
+    const split = payablesSplit(r.open, today, addDaysIso(today, 30));
+    sections.push({
+      heading: `Payables as of ${df(today)}`,
+      summary: [
+        { label: "Overdue", value: money(split.overdue.amount) },
+        { label: "Due within 30 days", value: money(split.dueSoon.amount) },
+        { label: "Due later", value: money(split.later.amount) },
+        { label: `Outstanding (${split.count} bills)`, value: money(split.total), strong: true, boxed: true },
+      ],
+    });
   }
 
   return {

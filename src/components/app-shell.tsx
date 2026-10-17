@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  Banknote,
   BarChart3,
   Building2,
   Check,
@@ -18,6 +19,7 @@ import {
   Receipt,
   Settings,
   ShoppingCart,
+  Truck,
   UserCircle2,
   Users,
   UsersRound,
@@ -36,6 +38,8 @@ const ICONS = {
   payments: Wallet,
   expenses: Receipt,
   purchases: ShoppingCart,
+  suppliers: Truck,
+  supplierPayments: Banknote,
   members: UsersRound,
   reports: BarChart3,
   settings: Settings,

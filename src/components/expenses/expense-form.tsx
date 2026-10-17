@@ -12,18 +12,19 @@ type Props = {
   action: FormAction;
   categories: Option[];
   customers: Option[];
+  suppliers?: Option[];
   methods: Option[];
   purchaseTaxes: Option[];
   currencies: Option[];
   companyCurrency: string;
-  initial: { expenseDate: string; expenseNumber: string; categoryId: string; amount: string; currency: string; exchangeRate: string; customerId: string; paymentMethodId: string; notes: string; taxes: { taxTypeId: string; amount: string }[] };
+  initial: { expenseDate: string; expenseNumber: string; categoryId: string; amount: string; currency: string; exchangeRate: string; customerId: string; supplierId?: string; paymentMethodId: string; notes: string; taxes: { taxTypeId: string; amount: string }[] };
   receipt: { name: string; url: string } | null;
   customFields: CustomFieldInputDef[];
   customValues?: Record<number, string | null>;
   isNew: boolean;
 };
 
-export function ExpenseForm({ action, categories, customers, methods, purchaseTaxes, currencies, companyCurrency, initial, receipt, customFields, customValues, isNew }: Props) {
+export function ExpenseForm({ action, categories, customers, suppliers = [], methods, purchaseTaxes, currencies, companyCurrency, initial, receipt, customFields, customValues, isNew }: Props) {
   const [v, setV] = useState(initial);
   const set = (patch: Partial<typeof initial>) => setV((x) => ({ ...x, ...patch }));
   const foreign = v.currency !== companyCurrency;
@@ -75,6 +76,7 @@ export function ExpenseForm({ action, categories, customers, methods, purchaseTa
             </div>
           ) : null}
           <div>{sel("e-cust", "Customer", v.customerId, customers, (s) => set({ customerId: s }))}<FieldError name="customerId" /></div>
+          {suppliers.length ? <div>{sel("e-supp", "Supplier", v.supplierId ?? "", suppliers, (s) => set({ supplierId: s }))}<FieldError name="supplierId" /></div> : null}
           <div>{sel("e-method", "Payment mode", v.paymentMethodId, methods, (s) => set({ paymentMethodId: s }))}</div>
         </CardBody>
       </Card>

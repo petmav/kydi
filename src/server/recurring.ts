@@ -300,8 +300,10 @@ export async function runScheduler(now = new Date()) {
   running = true;
   try {
     const generated = await runDueSchedules(now);
+    const { runDueRecurringCosts } = await import("./purchasing");
+    const costs = await runDueRecurringCosts(now);
     const sweeps = await runSweeps(now);
-    return { skipped: false, generated, ...sweeps };
+    return { skipped: false, generated, costs, ...sweeps };
   } finally {
     running = false;
   }

@@ -57,7 +57,33 @@ export const ABILITY_GROUPS: Group[] = [
       { ability: "manage-all-notes", label: "Manage notes", depends: ["view-all-notes"] },
     ],
   },
+  { key: "supplier", label: "Suppliers", abilities: crud("supplier", "suppliers") },
+  { key: "bill", label: "Bills", abilities: crud("bill", "bills", { create: ["view-supplier"], del: [] }) },
+  {
+    key: "supplier-payment",
+    label: "Supplier payments",
+    abilities: crud("supplier-payment", "supplier payments", { create: ["view-supplier", "view-bill"], del: [] }),
+  },
+  {
+    key: "supplier-credit",
+    label: "Supplier credits",
+    abilities: crud("supplier-credit", "supplier credits", { create: ["view-supplier", "view-bill"], del: [] }),
+  },
+  {
+    key: "supplier-refund",
+    label: "Supplier refunds",
+    abilities: crud("supplier-refund", "supplier refunds", { create: ["view-supplier", "view-supplier-payment", "view-supplier-credit"], edit: ["view-supplier"], del: [] }),
+  },
+  { key: "recurring-cost", label: "Recurring costs", abilities: crud("recurring-cost", "recurring costs", { create: ["view-supplier"], del: [] }) },
 ];
+
+/** Purchasing abilities (spec §3.4), listed for data migrations of existing roles. */
+export const PURCHASING_ABILITIES = ["supplier", "bill", "supplier-payment", "supplier-credit", "supplier-refund", "recurring-cost"].flatMap((n) => [
+  `view-${n}`,
+  `create-${n}`,
+  `edit-${n}`,
+  `delete-${n}`,
+]);
 
 export type Ability =
   | "view-customer" | "create-customer" | "edit-customer" | "delete-customer"
@@ -71,7 +97,13 @@ export type Ability =
   | "view-custom-field" | "create-custom-field" | "edit-custom-field" | "delete-custom-field"
   | "view-financial-reports"
   | "view-exchange-rate-provider" | "create-exchange-rate-provider" | "edit-exchange-rate-provider" | "delete-exchange-rate-provider"
-  | "dashboard" | "view-all-notes" | "manage-all-notes";
+  | "dashboard" | "view-all-notes" | "manage-all-notes"
+  | "view-supplier" | "create-supplier" | "edit-supplier" | "delete-supplier"
+  | "view-bill" | "create-bill" | "edit-bill" | "delete-bill"
+  | "view-supplier-payment" | "create-supplier-payment" | "edit-supplier-payment" | "delete-supplier-payment"
+  | "view-supplier-credit" | "create-supplier-credit" | "edit-supplier-credit" | "delete-supplier-credit"
+  | "view-supplier-refund" | "create-supplier-refund" | "edit-supplier-refund" | "delete-supplier-refund"
+  | "view-recurring-cost" | "create-recurring-cost" | "edit-recurring-cost" | "delete-recurring-cost";
 
 export const ALL_ABILITIES: Ability[] = ABILITY_GROUPS.flatMap((g) => g.abilities.map((a) => a.ability as Ability));
 

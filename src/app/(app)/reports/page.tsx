@@ -38,7 +38,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   const one = (k: string) => (typeof sp[k] === "string" ? (sp[k] as string) : "");
   const tabRaw = one("tab") || "sales";
-  const tab = ["sales", "profit-loss", "expenses", "taxes"].includes(tabRaw) ? tabRaw : "sales";
+  const tab = ["sales", "profit-loss", "expenses", "taxes", "purchases"].includes(tabRaw) ? tabRaw : "sales";
   const salesBy = one("by") === "items" ? "items" : "customers";
   const type: ReportType = tab === "sales" ? (salesBy === "items" ? "sales-items" : "sales-customers") : (tab as ReportType);
   const today = todayIn(ctx.settings.time_zone);
@@ -65,6 +65,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             { key: "profit-loss", label: "Profit & loss" },
             { key: "expenses", label: "Expenses" },
             { key: "taxes", label: "Taxes" },
+            ...(ctx.can("view-bill") ? [{ key: "purchases", label: "Purchases" }] : []),
           ]}
         />
         <form method="get" className="flex flex-wrap items-end gap-3 border-b border-line px-4 py-3">

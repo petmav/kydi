@@ -34,7 +34,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
           amount: minorToInput(e.amount),
           currency: e.currency,
           exchangeRate: String(e.exchangeRate),
-          customerId: e.customerId ? String(e.customerId) : "",
+          supplierId: e.supplierId ? String(e.supplierId) : "", customerId: e.customerId ? String(e.customerId) : "",
           paymentMethodId: e.paymentMethodId ? String(e.paymentMethodId) : "",
           notes: e.notes ?? "",
           taxes: e.taxes.map((t) => ({ taxTypeId: String(t.taxTypeId), amount: minorToInput(t.amount) })),

@@ -64,7 +64,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </form>
         }
       />
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-flow-row-dense gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader title="Receivables" actions={ctx.can("view-invoice") ? <Link href="/invoices?tab=due" className="text-sm text-brand-700 hover:underline">View invoices</Link> : null} />
           <CardBody>
@@ -95,6 +95,27 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             )}
           </CardBody>
         </Card>
+        {ctx.can("view-bill") && d.payables.count > 0 ? (
+          <Card className="lg:col-span-2">
+            <CardHeader title="Payables" actions={<Link href="/purchases" className="text-sm text-brand-700 hover:underline">View purchases</Link>} />
+            <CardBody>
+              <p className="tabular text-2xl font-semibold">{money(d.payables.total)}</p>
+              <p className="text-sm text-muted">owed on {d.payables.count} open bill{d.payables.count === 1 ? "" : "s"}</p>
+              <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                {[
+                  { k: "Overdue", v: d.payables.overdue },
+                  { k: "Due within 30 days", v: d.payables.dueSoon },
+                  { k: "Due later", v: d.payables.later },
+                ].map((x) => (
+                  <div key={x.k}>
+                    <dt className="text-muted">{x.k}</dt>
+                    <dd className="tabular font-medium">{money(x.v.amount)} <span className="text-xs text-muted">({x.v.count})</span></dd>
+                  </div>
+                ))}
+              </dl>
+            </CardBody>
+          </Card>
+        ) : null}
         <div className="grid gap-4">
           {[
             { label: "Customers", value: d.counts.customers, href: "/customers" },

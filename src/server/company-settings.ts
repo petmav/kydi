@@ -70,6 +70,12 @@ export const SETTINGS_SECTIONS = {
     estimate_billing_address_format: html,
     estimate_shipping_address_format: html,
   }),
+  purchases: z.object({
+    bill_number_format: numberFormat,
+    supplier_credit_number_format: numberFormat,
+    supplier_payment_number_format: numberFormat,
+    supplier_refund_number_format: numberFormat,
+  }),
   payments: z.object({
     payment_number_format: numberFormat,
     payment_email_attachment: yesNo,

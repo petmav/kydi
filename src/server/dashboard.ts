@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { payablesSplit } from "@/domain/purchasing";
 import { addDaysIso, fiscalYearRange, isoDate, parseIsoDate, todayIn } from "@/lib/dates";
 import type { CompanySettings } from "@/lib/settings";
 
@@ -23,7 +24,7 @@ export function resolvePeriod(settings: CompanySettings, key: string | undefined
 export async function dashboardData(companyId: number, settings: CompanySettings, period: Period) {
   const today = todayIn(settings.time_zone);
   const soon = addDaysIso(today, 30);
-  const [open, customers, invoiceCount, estimateCount, chart, recentDue, recentEst] = await Promise.all([
+  const [open, customers, invoiceCount, estimateCount, chart, recentDue, recentEst, openBills] = await Promise.all([
     db.invoice.findMany({ where: { companyId, type: "INVOICE", status: { not: "DRAFT" }, baseDueAmount: { gt: 0 } }, select: { baseDueAmount: true, dueDate: true } }),
     db.customer.count({ where: { companyId } }),
     db.invoice.count({ where: { companyId, type: "INVOICE" } }),
@@ -31,6 +32,7 @@ export async function dashboardData(companyId: number, settings: CompanySettings
     cashFlow(companyId, period),
     db.invoice.findMany({ where: { companyId, type: "INVOICE", status: { not: "DRAFT" }, baseDueAmount: { gt: 0 } }, include: { customer: { select: { name: true } } }, orderBy: [{ dueDate: "asc" }], take: 5 }),
     db.estimate.findMany({ where: { companyId }, include: { customer: { select: { name: true } } }, orderBy: [{ estimateDate: "desc" }, { id: "desc" }], take: 5 }),
+    db.bill.findMany({ where: { companyId, type: "BILL", status: "OPEN", baseDueAmount: { gt: 0 } }, select: { baseDueAmount: true, dueDate: true } }),
   ]);
   const split = { overdue: { amount: 0, count: 0 }, soon: { amount: 0, count: 0 }, later: { amount: 0, count: 0 } };
   for (const i of open) {
@@ -41,6 +43,7 @@ export async function dashboardData(companyId: number, settings: CompanySettings
   }
   return {
     receivables: { total: open.reduce((s, i) => s + Number(i.baseDueAmount), 0), count: open.length, ...split },
+    payables: payablesSplit(openBills.map((b) => ({ dueDate: b.dueDate ? isoDate(b.dueDate) : null, baseDue: Number(b.baseDueAmount) })), today, soon),
     counts: { customers, invoices: invoiceCount, estimates: estimateCount },
     chart,
     recentDue: recentDue.map((i) => ({ id: i.id, number: i.invoiceNumber, customer: i.customer.name, dueDate: i.dueDate ? isoDate(i.dueDate) : null, due: Number(i.baseDueAmount) })),
@@ -56,15 +59,18 @@ export async function cashFlow(companyId: number, period: Period, customerId?: n
   const fromD = parseIsoDate(period.from)!;
   const toD = parseIsoDate(period.to)!;
   const scope = customerId ? { customerId } : {};
-  const [invs, pays, exps] = await Promise.all([
+  const [invs, pays, exps, supplierPays] = await Promise.all([
     db.invoice.findMany({ where: { companyId, ...scope, invoiceDate: { gte: fromD, lte: toD }, OR: [{ type: "CREDIT_NOTE" }, { status: { not: "DRAFT" } }] }, select: { invoiceDate: true, baseTotal: true } }),
     db.payment.findMany({ where: { companyId, ...scope, paymentDate: { gte: fromD, lte: toD } }, select: { paymentDate: true, baseAmount: true } }),
     db.expense.findMany({ where: { companyId, ...scope, expenseDate: { gte: fromD, lte: toD } }, select: { expenseDate: true, baseAmount: true } }),
+    // Spec §5.1: expenses + supplier payments − supplier refunds (company-wide series only).
+    customerId ? Promise.resolve([]) : db.supplierPayment.findMany({ where: { companyId, status: "OPEN", paymentDate: { gte: fromD, lte: toD } }, select: { paymentDate: true, baseAmount: true, type: true } }),
   ]);
   return bucketCashFlow(period, [
     ...invs.map((i) => ({ date: isoDate(i.invoiceDate), kind: "sales" as const, amount: Number(i.baseTotal) })),
     ...pays.map((p) => ({ date: isoDate(p.paymentDate), kind: "receipts" as const, amount: Number(p.baseAmount) })),
     ...exps.map((e) => ({ date: isoDate(e.expenseDate), kind: "expenses" as const, amount: Number(e.baseAmount) })),
+    ...supplierPays.map((p) => ({ date: isoDate(p.paymentDate), kind: "expenses" as const, amount: (p.type === "REFUND" ? -1 : 1) * Number(p.baseAmount) })),
   ]);
 }
 

@@ -53,13 +53,27 @@ previews on [Zenith Hosting](https://zenith.hosting).
   be public http(s) hosts.
 - **Payments:** allocations across invoices with row locking, unapplied customer credit, receipts.
 - **Expenses:** categories, purchase-tax breakdown, receipt upload stored on the volume-backed `/data/uploads`.
+- **Purchasing:** suppliers (currency, default category, payment terms, address, enable/disable; currency locked
+  once documents exist) with a detail screen showing the payables split, bills, credits and payments. Bills with a
+  lines editor (category, description, quantity, price, per-line discount and purchase taxes, prices including
+  tax), draft / open / void lifecycle (void needs a reason and is refused while payments or credits apply), and
+  a financial lock once anything is applied (then only reference, due date and notes change). Supplier payments
+  allocated to open bills of the same supplier and currency (oldest-first helper, row locking, void removes the
+  allocations). Supplier credits (standalone or raised against a bill, applied to that bill automatically,
+  re-allocatable to other bills), supplier refunds against a payment or credit up to its unused balance, and
+  recurring costs that generate a bill (optionally draft) or an expense on a daily-or-slower schedule from the
+  in-process scheduler. Own number formats (Settings > Customization > Purchases), purchasing abilities in the
+  role editor (manager and read-only presets updated by migration), a payables card on the dashboard, supplier
+  payments and refunds in cash flow and profit & loss, bill taxes in the tax summary, a Purchases report tab
+  (by supplier and status plus payables, HTML and PDF), an optional supplier on expenses, and a `/purchases`
+  overview page.
 - **Recurring invoices:** cron-expression schedules (presets or custom) in the company time zone, previews,
   count/date limits, pause/resume, auto-send, creator notifications, idempotent run log.
 - **Background jobs:** recurring generation and overdue/estimate-expiry sweeps run on boot, every minute in
   process, and on demand via `GET|POST /api/cron/recurring` with `Authorization: Bearer $CRON_SECRET`.
 - **Dashboard:** receivables split (overdue / due soon / later), counters, cash-flow chart, recent lists.
-- **Reports:** sales by customer, sales by item, expenses, profit & loss (cash basis), tax summary — HTML preview
-  and PDF export.
+- **Reports:** sales by customer, sales by item, expenses, profit & loss (cash basis), tax summary, purchases —
+  HTML preview and PDF export.
 - **Profile photos:** JPG/PNG/GIF/WebP up to 2 MB (signature-checked), stored under `/data/uploads/avatars`
   and served by the authenticated route `/api/files/avatar/{userId}` (self, company co-members, administrator).
 - **Administration** (`/admin`, platform administrator only, reachable without a company): overview counters and
@@ -69,8 +83,7 @@ previews on [Zenith Hosting](https://zenith.hosting).
 - **Customer portal** at `/portal/<company-slug>`: separate login and sessions, invoices, estimates (accept or
   reject), payments, profile.
 - **REST API** under `/api/v1` (see below).
-- Out of scope for v1 and shown as labelled pages: purchasing (suppliers, bills), module marketplace, backups,
-  file disks, self-updater.
+- Out of scope for v1 and shown as labelled pages: module marketplace, backups, file disks, self-updater.
 
 ## Known gaps
 
@@ -83,7 +96,9 @@ Not built yet (planned, in this order):
 - Administration: impersonation ("log in as"), backups, remote file disks, currency editing and PDF page setup
   are not implemented (optional per the spec). Profile photos are shown as a square crop but not re-encoded.
 - PDFs embed DejaVu Sans, which has no CJK glyphs, and right-to-left scripts (Arabic, Hebrew) are not shaped.
-- Purchasing module (suppliers, bills, supplier payments, credits, refunds, recurring costs, purchases report).
+- Purchasing: no bill attachments, no bill PDF, no supplier credits raised against expenses, no line-quantity
+  tracking for partial credits (the credit total is capped instead), recurring costs do not email the creator,
+  and purchasing has no REST API endpoints or custom fields yet.
 - End-to-end smoke test suite.
 
 ## Tech stack

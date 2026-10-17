@@ -12,7 +12,7 @@ import { isCurrency } from "@/lib/intl-data";
 import { companyProfileSchema, preferencesSchema, SETTINGS_SECTIONS } from "@/server/company-settings";
 import { deleteStoredFile, extensionOf, IMAGE_EXTENSIONS, storeFile } from "@/lib/storage";
 import { setFlash } from "@/lib/flash";
-import { companyHasFinancialData } from "@/lib/companies";
+import { companyHasFinancialData, deleteCompany } from "@/lib/companies";
 import { saveCustomFieldAnswers, validateCustomFieldAnswers } from "@/lib/custom-fields";
 
 // ---- Company information ------------------------------------------------------
@@ -56,7 +56,7 @@ export async function deleteCompanyAction(_prev: ActionState, formData: FormData
     const ctx = await requireOwner();
     const confirm = String(formData.get("confirm") ?? "").trim();
     if (confirm !== ctx.company.name) return failure("Type the company name exactly to confirm.", { confirm: ["The name does not match."] });
-    await db.company.delete({ where: { id: ctx.companyId } });
+    await deleteCompany(ctx.companyId);
     const jar = await cookies();
     jar.delete(COMPANY_COOKIE);
     await db.user.update({ where: { id: ctx.user.id }, data: { lastCompanyId: null } });

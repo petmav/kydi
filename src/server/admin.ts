@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { zEmail, zOptionalString, zPassword, type FieldErrors } from "@/lib/action";
 import { hashPassword } from "@/lib/auth/password";
 import { assignOwner } from "@/server/team";
+import { deleteCompany } from "@/lib/companies";
 
 /** Platform administration (spec §5.13): companies and users across the installation. Callers check super admin. */
 
@@ -41,7 +42,7 @@ export async function adminDeleteCompany(id: number, confirm: string): Promise<A
   const company = await db.company.findUnique({ where: { id } });
   if (!company) return fail("Company not found.");
   if (confirm.trim() !== company.name) return fail("Type the company name exactly to confirm.", { confirm: ["The name does not match."] });
-  await db.company.delete({ where: { id } });
+  await deleteCompany(id);
   await db.user.updateMany({ where: { lastCompanyId: id }, data: { lastCompanyId: null } });
   return { ok: true, id };
 }

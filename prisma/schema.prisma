@@ -119,6 +119,10 @@ model Company {
   emailLogs  EmailLog[]
   mailConfig MailConfig?
   exchangeRateProviders ExchangeRateProvider[]
+  suppliers  Supplier[]
+  bills      Bill[]
+  supplierPayments SupplierPayment[]
+  recurringCosts RecurringCost[]
 }
 
 model CompanySetting {
@@ -588,6 +592,7 @@ model PaymentMethod {
   company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   payments  Payment[]
   expenses  Expense[]
+  supplierPayments SupplierPayment[]
 
   @@unique([companyId, name])
 }
@@ -641,6 +646,8 @@ model ExpenseCategory {
   updatedAt   DateTime  @updatedAt
   company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   expenses    Expense[]
+  suppliers   Supplier[]
+  billLines   BillLine[]
 }
 
 model Expense {
@@ -656,6 +663,7 @@ model Expense {
   baseAmount      BigInt
   paymentMethodId Int?
   customerId      Int?
+  supplierId      Int?
   notes           String?
   receiptPath     String?
   receiptName     String?
@@ -667,6 +675,7 @@ model Expense {
   category        ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   paymentMethod   PaymentMethod?  @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
   customer        Customer?       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplier        Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   taxes           ExpenseTax[]
 
   @@index([companyId, expenseDate])
@@ -807,4 +816,222 @@ model ExchangeRateProvider {
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId, active])
+}
+
+// ---- Purchasing (spec §3.20, §4.14) -------------------------------------------------------
+
+model Supplier {
+  id                Int              @id @default(autoincrement())
+  companyId         Int
+  creatorId         Int?
+  name              String
+  contactName       String?
+  email             String?
+  phone             String?
+  website           String?
+  taxId             String?
+  currency          String
+  expenseCategoryId Int?
+  paymentTerms      Int              @default(30)
+  street1           String?
+  street2           String?
+  city              String?
+  state             String?
+  zip               String?
+  country           String?
+  notes             String?
+  enabled           Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  company           Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expenseCategory   ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id], onDelete: SetNull)
+  bills             Bill[]
+  payments          SupplierPayment[]
+  recurringCosts    RecurringCost[]
+  expenses          Expense[]
+
+  @@index([companyId, name])
+}
+
+enum BillType {
+  BILL
+  SUPPLIER_CREDIT
+}
+
+enum BillStatus {
+  DRAFT
+  OPEN
+  VOID
+}
+
+/// Bill or supplier credit (same document shape, spec §3.20). Money in minor units of `currency`.
+model Bill {
+  id                Int        @id @default(autoincrement())
+  companyId         Int
+  creatorId         Int?
+  supplierId        Int
+  type              BillType   @default(BILL)
+  number            String
+  sequenceNumber    Int
+  reference         String?
+  status            BillStatus @default(DRAFT)
+  documentDate      DateTime   @db.Date
+  dueDate           DateTime?  @db.Date
+  currency          String
+  exchangeRate      Float      @default(1)
+  taxIncluded       Boolean    @default(false)
+  subTotal          BigInt     @default(0)
+  tax               BigInt     @default(0)
+  total             BigInt     @default(0)
+  baseTotal         BigInt     @default(0)
+  dueAmount         BigInt     @default(0)
+  baseDueAmount     BigInt     @default(0)
+  notes             String?
+  voidedAt          DateTime?
+  voidReason        String?
+  financialLockedAt DateTime?
+  supplierSnapshot  Json       @default("{}")
+  sourceBillId      Int?
+  sourceExpenseId   Int?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  company           Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier          Supplier   @relation(fields: [supplierId], references: [id], onDelete: NoAction)
+  sourceBill        Bill?      @relation("BillCredits", fields: [sourceBillId], references: [id], onDelete: SetNull)
+  credits           Bill[]     @relation("BillCredits")
+  lines             BillLine[]
+  settlements       BillSettlement[] @relation("SettledBill")
+  creditSettlements BillSettlement[] @relation("CreditSource")
+  refunds           SupplierPayment[] @relation("RefundOfCredit")
+
+  @@unique([companyId, type, number])
+  @@index([companyId, type, status])
+  @@index([supplierId])
+}
+
+model BillLine {
+  id                Int             @id @default(autoincrement())
+  billId            Int
+  position          Int             @default(0)
+  expenseCategoryId Int
+  description       String
+  quantity          Float
+  price             BigInt
+  discountType      DiscountType    @default(PERCENTAGE)
+  discount          Float           @default(0)
+  subTotal          BigInt
+  discountVal       BigInt          @default(0)
+  tax               BigInt          @default(0)
+  total             BigInt
+  baseTotal         BigInt          @default(0)
+  sourceBillLineId  Int?
+  bill              Bill            @relation(fields: [billId], references: [id], onDelete: Cascade)
+  expenseCategory   ExpenseCategory @relation(fields: [expenseCategoryId], references: [id], onDelete: NoAction)
+  taxes             BillLineTax[]
+
+  @@index([billId])
+}
+
+model BillLineTax {
+  id              Int            @id @default(autoincrement())
+  billLineId      Int
+  taxTypeId       Int?
+  name            String
+  calculationType TaxCalculation
+  percent         Float?
+  fixedAmount     BigInt?
+  compound        Boolean        @default(false)
+  amount          BigInt
+  baseAmount      BigInt         @default(0)
+  billLine        BillLine       @relation(fields: [billLineId], references: [id], onDelete: Cascade)
+}
+
+enum SupplierPaymentType {
+  PAYMENT
+  REFUND
+}
+
+/// Supplier payment or supplier refund (spec §3.20). Status OPEN or VOID.
+model SupplierPayment {
+  id                Int                 @id @default(autoincrement())
+  companyId         Int
+  creatorId         Int?
+  supplierId        Int
+  type              SupplierPaymentType @default(PAYMENT)
+  number            String
+  sequenceNumber    Int
+  reference         String?
+  status            String              @default("OPEN")
+  paymentDate       DateTime            @db.Date
+  amount            BigInt
+  baseAmount        BigInt
+  currency          String
+  exchangeRate      Float               @default(1)
+  paymentMethodId   Int?
+  notes             String?
+  voidedAt          DateTime?
+  voidReason        String?
+  refundOfPaymentId Int?
+  refundOfCreditId  Int?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  company           Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier          Supplier            @relation(fields: [supplierId], references: [id], onDelete: NoAction)
+  paymentMethod     PaymentMethod?      @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  refundOfPayment   SupplierPayment?    @relation("PaymentRefunds", fields: [refundOfPaymentId], references: [id], onDelete: NoAction)
+  refunds           SupplierPayment[]   @relation("PaymentRefunds")
+  refundOfCredit    Bill?               @relation("RefundOfCredit", fields: [refundOfCreditId], references: [id], onDelete: NoAction)
+  settlements       BillSettlement[]
+
+  @@unique([companyId, type, number])
+  @@index([supplierId])
+}
+
+/// Allocation of a supplier payment or a supplier credit to a bill (spec §3.20 "Allocations").
+model BillSettlement {
+  id                Int              @id @default(autoincrement())
+  billId            Int
+  supplierPaymentId Int?
+  creditId          Int?
+  amount            BigInt
+  baseAmount        BigInt
+  createdAt         DateTime         @default(now())
+  bill              Bill             @relation("SettledBill", fields: [billId], references: [id], onDelete: NoAction)
+  supplierPayment   SupplierPayment? @relation(fields: [supplierPaymentId], references: [id], onDelete: Cascade)
+  credit            Bill?            @relation("CreditSource", fields: [creditId], references: [id], onDelete: Cascade)
+
+  @@unique([billId, supplierPaymentId])
+  @@unique([billId, creditId])
+  @@index([supplierPaymentId])
+  @@index([creditId])
+}
+
+/// Recurring bill or expense (spec §3.20, §4.14). `template` holds the line to generate.
+model RecurringCost {
+  id            Int             @id @default(autoincrement())
+  companyId     Int
+  creatorId     Int?
+  supplierId    Int
+  name          String
+  mode          String          @default("BILL")
+  status        RecurringStatus @default(ACTIVE)
+  frequency     String
+  startsAt      DateTime
+  nextRunAt     DateTime?
+  limitBy       LimitBy         @default(NONE)
+  limitCount    Int?
+  limitDate     DateTime?       @db.Date
+  dueDays       Int             @default(30)
+  createAsDraft Boolean         @default(false)
+  notifyCreator Boolean         @default(false)
+  template      Json
+  runCount      Int             @default(0)
+  lastRunAt     DateTime?
+  lastError     String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  company       Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  supplier      Supplier        @relation(fields: [supplierId], references: [id], onDelete: NoAction)
+
+  @@index([status, nextRunAt])
 }

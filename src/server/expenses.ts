@@ -18,6 +18,7 @@ export const expenseSchema = z.object({
   currency: z.string().refine(isCurrency, "Choose a currency."),
   exchangeRate: z.union([z.string(), z.number()]).optional(),
   customerId: z.union([z.string(), z.number()]).optional().nullable().transform((v) => (v === "" || v == null ? null : Number(v))),
+  supplierId: z.union([z.string(), z.number()]).optional().nullable().transform((v) => (v === "" || v == null ? null : Number(v))),
   paymentMethodId: z.union([z.string(), z.number()]).optional().nullable().transform((v) => (v === "" || v == null ? null : Number(v))),
   notes: z.string().max(65000).optional().nullable(),
   taxes: z.array(z.object({ taxTypeId: z.coerce.number().int().positive(), amount: z.union([z.string(), z.number()]) })).optional(),
@@ -44,6 +45,7 @@ export async function saveExpense(ctx: CompanyContext, id: number | null, input:
     if (!Number.isFinite(rate) || rate <= 0) errors.exchangeRate = ["Enter the exchange rate."];
   }
   if (input.customerId && !(await db.customer.findFirst({ where: { id: input.customerId, companyId: ctx.companyId } }))) errors.customerId = ["Choose a valid customer."];
+  if (input.supplierId && !(await db.supplier.findFirst({ where: { id: input.supplierId, companyId: ctx.companyId } }))) errors.supplierId = ["Choose a valid supplier."];
   if (input.paymentMethodId && !(await db.paymentMethod.findFirst({ where: { id: input.paymentMethodId, companyId: ctx.companyId } }))) errors.paymentMethodId = ["Choose a valid payment mode."];
   const taxes = (input.taxes ?? []).map((t) => ({ taxTypeId: t.taxTypeId, amount: m(t.amount) }));
   if (new Set(taxes.map((t) => t.taxTypeId)).size !== taxes.length) errors.taxes = ["Each tax can be listed once."];
@@ -75,6 +77,7 @@ export async function saveExpense(ctx: CompanyContext, id: number | null, input:
     exchangeRate: rate,
     baseAmount: toBase(amount, rate),
     customerId: input.customerId,
+    supplierId: input.supplierId ?? null,
     paymentMethodId: input.paymentMethodId,
     notes: input.notes || null,
     ...(receiptData ?? {}),

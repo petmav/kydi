@@ -70,3 +70,32 @@ export async function companyHasFinancialData(companyId: number): Promise<boolea
   ]);
   return i + e + p > 0;
 }
+
+/**
+ * Deletes a company and everything it owns (spec §3.1 "On delete"). Documents go first because their
+ * restricting foreign keys to reference data are checked before the company-level cascade reaches them.
+ */
+export async function deleteCompany(companyId: number) {
+  await db.$transaction(
+    async (tx) => {
+      await tx.billSettlement.deleteMany({ where: { bill: { companyId } } });
+      await tx.supplierPayment.deleteMany({ where: { companyId, type: "REFUND" } });
+      await tx.supplierPayment.deleteMany({ where: { companyId } });
+      await tx.bill.deleteMany({ where: { companyId, type: "SUPPLIER_CREDIT" } });
+      await tx.bill.deleteMany({ where: { companyId } });
+      await tx.recurringCost.deleteMany({ where: { companyId } });
+      await tx.supplier.deleteMany({ where: { companyId } });
+      // Rows whose foreign keys restrict deletion of reference data (tax types, units, categories, roles).
+      await tx.paymentAllocation.deleteMany({ where: { payment: { companyId } } });
+      await tx.payment.deleteMany({ where: { companyId } });
+      await tx.invoice.deleteMany({ where: { companyId } });
+      await tx.estimate.deleteMany({ where: { companyId } });
+      await tx.recurringInvoice.deleteMany({ where: { companyId } });
+      await tx.expense.deleteMany({ where: { companyId } });
+      await tx.item.deleteMany({ where: { companyId } });
+      await tx.companyUser.deleteMany({ where: { companyId } });
+      await tx.company.delete({ where: { id: companyId } });
+    },
+    { timeout: 60000 },
+  );
+}

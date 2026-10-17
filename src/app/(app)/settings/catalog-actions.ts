@@ -135,9 +135,10 @@ export async function saveExpenseCategoryAction(_prev: ActionState, formData: Fo
 export async function deleteExpenseCategoryAction(id: number): Promise<ActionState> {
   return guard(async () => {
     const ctx = await requireAbility("delete-expense");
-    const c = await db.expenseCategory.findFirst({ where: { id, companyId: ctx.companyId }, include: { _count: { select: { expenses: true } } } });
+    const c = await db.expenseCategory.findFirst({ where: { id, companyId: ctx.companyId }, include: { _count: { select: { expenses: true, billLines: true } } } });
     if (!c) return failure("Category not found.");
     if (c._count.expenses > 0) return failure("This category has expenses attached and cannot be deleted.");
+    if (c._count.billLines > 0) return failure("This category is used on bills or supplier credits and cannot be deleted.");
     await db.expenseCategory.delete({ where: { id } });
     return done("/settings/expense-categories", "Category deleted.");
   });

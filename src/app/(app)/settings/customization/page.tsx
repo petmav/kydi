@@ -18,8 +18,17 @@ const TABS = [
   { key: "invoices", label: "Invoices" },
   { key: "estimates", label: "Estimates" },
   { key: "payments", label: "Payments" },
+  { key: "purchases", label: "Purchases" },
   { key: "items", label: "Items" },
 ] as const;
+
+async function purchaseSeq(companyId: number, kind: "bill" | "credit" | "payment" | "refund") {
+  const agg =
+    kind === "bill" || kind === "credit"
+      ? await db.bill.aggregate({ where: { companyId, type: kind === "bill" ? "BILL" : "SUPPLIER_CREDIT" }, _max: { sequenceNumber: true } })
+      : await db.supplierPayment.aggregate({ where: { companyId, type: kind === "payment" ? "PAYMENT" : "REFUND" }, _max: { sequenceNumber: true } });
+  return (agg._max.sequenceNumber ?? 0) + 1;
+}
 
 async function nextSeq(companyId: number, kind: "invoice" | "credit" | "estimate" | "payment") {
   const agg =
@@ -103,6 +112,16 @@ export default async function CustomizationPage({ searchParams }: { searchParams
             <div className="grid gap-4 lg:grid-cols-2">
               <TemplateTextarea name="payment_company_address_format" label="Company address format" defaultValue={s.payment_company_address_format} placeholders={addressPh} />
               <TemplateTextarea name="payment_from_customer_address_format" label="Received-from address format" defaultValue={s.payment_from_customer_address_format} placeholders={billPh} />
+            </div>
+          </SectionForm>
+        ) : null}
+        {tab === "purchases" ? (
+          <SectionForm action={saveSettingsSectionAction.bind(null, "purchases")}>
+            <div className="grid gap-6 lg:grid-cols-2">
+              <NumberFormatField name="bill_number_format" label="Bill number format" defaultValue={s.bill_number_format} nextSequence={await purchaseSeq(ctx.companyId, "bill")} />
+              <NumberFormatField name="supplier_credit_number_format" label="Supplier credit number format" defaultValue={s.supplier_credit_number_format} nextSequence={await purchaseSeq(ctx.companyId, "credit")} />
+              <NumberFormatField name="supplier_payment_number_format" label="Supplier payment number format" defaultValue={s.supplier_payment_number_format} nextSequence={await purchaseSeq(ctx.companyId, "payment")} />
+              <NumberFormatField name="supplier_refund_number_format" label="Supplier refund number format" defaultValue={s.supplier_refund_number_format} nextSequence={await purchaseSeq(ctx.companyId, "refund")} />
             </div>
           </SectionForm>
         ) : null}
