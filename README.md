@@ -38,6 +38,12 @@ previews on [Zenith Hosting](https://zenith.hosting).
   environment variables, then stdout. Passwords, API keys and tokens are encrypted with AES-256-GCM (key derived
   from `SESSION_SECRET`), are never sent to the browser, and blank secret inputs keep the stored value. Company
   SMTP hosts must be public host names.
+- **Exchange rates:** providers per company (Settings > Exchange rate provider): Currency Converter (free,
+  prepaid, premium or dedicated URL), CurrencyFreaks, Currencylayer, Open Exchange Rates. Each lists the
+  currencies it serves (one active provider per currency), keys are encrypted and never shown again, an active
+  provider cannot be deleted, and "Check rate" fetches a live quote. Document and payment forms suggest the rate
+  from the provider (5 s timeout, 10 min cache), then the last rate used, then manual entry. Dedicated URLs must
+  be public http(s) hosts.
 - **Payments:** allocations across invoices with row locking, unapplied customer credit, receipts.
 - **Expenses:** categories, purchase-tax breakdown, receipt upload stored on the volume-backed `/data/uploads`.
 - **Recurring invoices:** cron-expression schedules (presets or custom) in the company time zone, previews,
@@ -56,8 +62,8 @@ previews on [Zenith Hosting](https://zenith.hosting).
 - **Customer portal** at `/portal/<company-slug>`: separate login and sessions, invoices, estimates (accept or
   reject), payments, profile.
 - **REST API** under `/api/v1` (see below).
-- Out of scope for v1 and shown as labelled pages: purchasing (suppliers, bills), exchange-rate providers,
-  module marketplace, backups, file disks, self-updater.
+- Out of scope for v1 and shown as labelled pages: purchasing (suppliers, bills), module marketplace, backups,
+  file disks, self-updater.
 
 ## Known gaps
 
@@ -66,7 +72,6 @@ Not built yet (planned, in this order):
 - Mail drivers are not exercised against live provider accounts in the test suite (request signing and form
   validation are unit-tested). Changing `SESSION_SECRET` makes stored mail and rate-provider secrets unreadable;
   re-enter them afterwards.
-- Exchange-rate providers and live rate lookup; the last rate used per currency is suggested instead.
 - Rich-text toolbar for notes and email templates (HTML is typed into a plain text area) and an allow-list HTML
   sanitiser (the current one strips scripts, event handlers and `javascript:` links only).
 - Administration: impersonation ("log in as"), backups, remote file disks, currency editing and PDF page setup
