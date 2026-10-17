@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { isBlankHtml, sanitizeHtml } from "@/lib/sanitize-html";
 import { db } from "@/lib/db";
 import { failure, guard, parseForm, success, zCheckbox, zOptionalString, type ActionState } from "@/lib/action";
 import { requireAbility, requireOwner, ForbiddenError } from "@/lib/auth/context";
@@ -177,7 +178,7 @@ const noteSchema = z.object({
   id: zId.optional(),
   name: zName,
   type: z.enum(["Invoice", "Estimate", "Payment"]),
-  notes: z.string().trim().min(1, "Enter the note text.").max(65000),
+  notes: z.string().trim().max(65000).transform((v) => sanitizeHtml(v)).refine((v) => !isBlankHtml(v), "Enter the note text."),
   isDefault: zCheckbox,
 });
 

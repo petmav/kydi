@@ -7,6 +7,7 @@ import { CustomFieldInputs, type CustomFieldInputDef } from "@/components/custom
 import { ModalForm } from "@/components/modal";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, inputClass } from "@/components/ui/primitives";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { computeDocument, taxSummary, type TaxSpec } from "@/domain/totals";
 import { FREQUENCY_PRESETS } from "@/domain/cron";
 import { R, formatMoney, minorToInput, toMinor } from "@/lib/money";
@@ -642,7 +643,7 @@ function DocumentFormBody({
             />
             <CardBody>
               <label htmlFor="doc-notes" className="sr-only">Notes</label>
-              <textarea id="doc-notes" rows={5} maxLength={65000} className={inputClass} value={notesText} onChange={(e) => setNotesText(e.target.value)} placeholder="Payment terms, bank details or a thank-you note. HTML and placeholders are supported." />
+              <RichTextEditor id="doc-notes" label="Notes" value={notesText} onChange={setNotesText} rows={5} placeholder="Payment terms, bank details or a thank-you note. Placeholders such as {CONTACT_DISPLAY_NAME} are supported." />
             </CardBody>
           </Card>
           <Card>

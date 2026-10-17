@@ -6,6 +6,7 @@ import { FieldError, Form, Label, SubmitButton, useFormContext, type FormAction 
 import { CustomFieldInputs, type CustomFieldInputDef } from "@/components/custom-field-inputs";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, inputClass } from "@/components/ui/primitives";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { formatMoney, minorToInput, toMinor } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -221,7 +222,7 @@ function Body({ customers, methods, notes, company, initial, paymentId, invoices
           />
           <CardBody>
             <label htmlFor="p-notes" className="sr-only">Notes</label>
-            <textarea id="p-notes" rows={4} className={inputClass} value={notesText} onChange={(e) => setNotesText(e.target.value)} />
+            <RichTextEditor id="p-notes" label="Notes" value={notesText} onChange={setNotesText} rows={4} />
           </CardBody>
         </Card>
         {customFields.length ? (

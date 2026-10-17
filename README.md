@@ -29,6 +29,12 @@ previews on [Zenith Hosting](https://zenith.hosting).
   fields entered per line) with server-authoritative totals; a "Make recurring" switch on new invoices turns the
   form into a recurring invoice; optional invoice time of day (Preferences > Invoice use time); status machines (draft → sent → viewed → completed; unpaid / partially paid /
   paid / overdue), mark as sent, clone, convert estimate ↔ invoice, accept/reject, partial credit notes.
+- **Rich text:** notes (documents, payments, note templates), email bodies and address formats use a small
+  built-in editor (bold, italic, underline, lists, links, clear formatting, HTML source view, placeholder
+  buttons; no editor dependency). An allow-list sanitiser (`src/lib/sanitize-html.ts`) keeps only basic
+  formatting tags, drops script-capable elements with their content, strips all event handlers and styles, and
+  allows only http(s), mailto, tel, relative and `{PLACEHOLDER}` links. It runs in the editor, on save (UI and
+  API) and again when emails and PDFs are rendered.
 - **PDF:** three invoice and three estimate layouts plus a payment receipt, rendered with `@react-pdf/renderer`
   (no headless browser). Item custom fields with "Show on document" print as extra line columns. Permanent public PDF links and expiring emailed viewer links that mark documents viewed.
 - **Email:** send dialog with preview, placeholders, optional PDF attachment, email log per document.
@@ -72,8 +78,7 @@ Not built yet (planned, in this order):
 - Mail drivers are not exercised against live provider accounts in the test suite (request signing and form
   validation are unit-tested). Changing `SESSION_SECRET` makes stored mail and rate-provider secrets unreadable;
   re-enter them afterwards.
-- Rich-text toolbar for notes and email templates (HTML is typed into a plain text area) and an allow-list HTML
-  sanitiser (the current one strips scripts, event handlers and `javascript:` links only).
+- The editor uses the browser's `execCommand`, which is deprecated but still supported by current browsers.
 - Administration: impersonation ("log in as"), backups, remote file disks, currency editing and PDF page setup
   are not implemented (optional per the spec). Profile photos are shown as a square crop but not re-encoded.
 - Unicode PDF font: PDFs use the built-in Helvetica, so text outside Latin-1 does not render.

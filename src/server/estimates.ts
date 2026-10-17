@@ -1,3 +1,4 @@
+import { cleanRichText } from "@/lib/sanitize-html";
 import { db } from "@/lib/db";
 import type { CompanyContext } from "@/lib/auth/context";
 import { randomToken } from "@/lib/auth/tokens";
@@ -37,7 +38,7 @@ export async function saveEstimate(ctx: CompanyContext, id: number | null, input
         estimateDate: doc.date!,
         expiryDate: doc.closingDate,
         templateName: template,
-        notes: input.notes || null,
+        notes: cleanRichText(input.notes),
         ...totalsData(doc),
         baseSubTotal: doc.result.baseSubTotal,
         baseDiscountVal: doc.result.baseDiscountVal,

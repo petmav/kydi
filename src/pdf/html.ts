@@ -1,4 +1,6 @@
-/** Minimal HTML -> text blocks for PDFs (react-pdf cannot render HTML). Tags are stripped safely. */
+import { sanitizeHtml } from "@/lib/sanitize-html";
+
+/** Minimal HTML -> text blocks for PDFs (react-pdf cannot render HTML). Input is sanitised, then tags are stripped. */
 export type Block = { text: string; bold: boolean; heading: boolean };
 
 const ENTITIES: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'", "&nbsp;": " " };
@@ -14,7 +16,7 @@ export function pdfText(s: string): string {
 
 export function htmlToBlocks(html: string | null | undefined): Block[] {
   if (!html) return [];
-  const normalized = html
+  const normalized = sanitizeHtml(html)
     .replace(/\r/g, "")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|li|tr|h[1-6])>/gi, "$&\n");

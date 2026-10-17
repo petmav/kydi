@@ -1,3 +1,4 @@
+import { cleanRichText } from "@/lib/sanitize-html";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -108,7 +109,7 @@ export async function savePayment(ctx: CompanyContext, id: number | null, input:
       if (await tx.payment.findFirst({ where: { companyId: ctx.companyId, paymentNumber: number, NOT: existing ? { id: existing.id } : undefined } })) {
         throw new DomainError("Payment number already in use.", { paymentNumber: ["This number is already used by another payment."] });
       }
-      const data = { customerId: customer.id, paymentNumber: number, paymentDate: date!, amount, currency: customer.currency, exchangeRate: rate, baseAmount, paymentMethodId: input.paymentMethodId, notes: input.notes || null };
+      const data = { customerId: customer.id, paymentNumber: number, paymentDate: date!, amount, currency: customer.currency, exchangeRate: rate, baseAmount, paymentMethodId: input.paymentMethodId, notes: cleanRichText(input.notes) };
       const p = existing
         ? await tx.payment.update({ where: { id: existing.id }, data: { ...data, ...(suggestion ? { customerSequenceNumber: suggestion.customerSequence } : {}) } })
         : await tx.payment.create({ data: { ...data, companyId: ctx.companyId, creatorId: ctx.user.id, sequenceNumber: suggestion!.sequence, customerSequenceNumber: suggestion!.customerSequence, uniqueHash: randomToken(24) } });

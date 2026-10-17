@@ -1,3 +1,4 @@
+import { cleanRichText } from "@/lib/sanitize-html";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import type { CompanyContext } from "@/lib/auth/context";
@@ -105,7 +106,7 @@ export async function saveRecurring(ctx: CompanyContext, id: number | null, inpu
       notifyCreator: rec.notifyCreator,
       lastError: null,
       lastAttemptAt: null,
-      notes: input.notes || null,
+      notes: cleanRichText(input.notes),
       templateName: template,
       ...totalsData(doc),
     };

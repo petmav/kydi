@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import {
   CheckboxField,
@@ -11,9 +11,11 @@ import {
   SelectField,
   SubmitButton,
   TextareaField,
+  useFieldError,
   type FormAction,
   type Option,
 } from "@/components/form";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { ModalForm } from "@/components/modal";
 import { ConfirmButton } from "@/components/confirm";
 import { inputClass } from "@/components/ui/primitives";
@@ -93,7 +95,7 @@ export function NewButton({ label, title, action, children, wide }: { label: str
   );
 }
 
-// ---- placeholder-aware HTML textarea ------------------------------------------------
+// ---- placeholder-aware rich-text field ------------------------------------------------
 
 export function TemplateTextarea({
   name,
@@ -110,32 +112,12 @@ export function TemplateTextarea({
   rows?: number;
   hint?: string;
 }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const insert = (token: string) => {
-    const el = ref.current;
-    if (!el) return;
-    const start = el.selectionStart ?? el.value.length;
-    const end = el.selectionEnd ?? el.value.length;
-    el.setRangeText(`{${token}}`, start, end, "end");
-    el.focus();
-  };
+  const err = useFieldError(name);
   return (
     <div>
       <Label htmlFor={`tt-${name}`}>{label}</Label>
-      <textarea id={`tt-${name}`} ref={ref} name={name} rows={rows} defaultValue={defaultValue} className={cn(inputClass, "font-mono text-xs")} />
+      <RichTextEditor id={`tt-${name}`} name={name} label={label} defaultValue={defaultValue} placeholders={placeholders} rows={rows} invalid={!!err} />
       <FieldError name={name} />
-      <div className="mt-2 flex flex-wrap gap-1" aria-label={`Insert placeholder into ${label}`}>
-        {placeholders.map((p) => (
-          <button
-            key={p}
-            type="button"
-            onClick={() => insert(p)}
-            className="rounded-md border border-line bg-slate-50 px-1.5 py-0.5 font-mono text-[11px] text-slate-600 hover:bg-brand-50 hover:text-brand-800 focus-ring"
-          >
-            {`{${p}}`}
-          </button>
-        ))}
-      </div>
       {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
     </div>
   );
