@@ -1,5 +1,6 @@
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Block } from "./html";
+import { fontBold, fontRegular } from "./fonts";
 
 /** Generic PDF for receipts, reports and statements: header + sections of tables + summary rows. */
 
@@ -20,15 +21,15 @@ export type SimplePdfData = {
 
 const GREY = "#94a3b8";
 const s = StyleSheet.create({
-  page: { padding: 40, fontSize: 9, fontFamily: "Helvetica", color: "#0f172a", lineHeight: 1.35 },
+  page: { padding: 40, fontSize: 9, ...fontRegular, color: "#0f172a", lineHeight: 1.35 },
   between: { flexDirection: "row", justifyContent: "space-between" },
-  h: { fontFamily: "Helvetica-Bold" },
+  h: { ...fontBold },
   muted: { color: "#475569" },
   small: { fontSize: 8, color: "#64748b" },
   rule: { borderBottomWidth: 0.75, borderBottomColor: GREY, marginVertical: 10 },
   head: { flexDirection: "row", borderTopWidth: 0.75, borderBottomWidth: 0.75, borderColor: GREY },
   row: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#e2e8f0" },
-  th: { fontFamily: "Helvetica-Bold", fontSize: 8, paddingVertical: 4, paddingHorizontal: 2 },
+  th: { ...fontBold, fontSize: 8, paddingVertical: 4, paddingHorizontal: 2 },
   td: { paddingVertical: 4, paddingHorizontal: 2 },
   box: { borderWidth: 0.75, borderColor: "#334155", padding: 8, marginTop: 10, width: 220 },
 });

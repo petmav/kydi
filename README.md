@@ -36,7 +36,8 @@ previews on [Zenith Hosting](https://zenith.hosting).
   allows only http(s), mailto, tel, relative and `{PLACEHOLDER}` links. It runs in the editor, on save (UI and
   API) and again when emails and PDFs are rendered.
 - **PDF:** three invoice and three estimate layouts plus a payment receipt, rendered with `@react-pdf/renderer`
-  (no headless browser). Item custom fields with "Show on document" print as extra line columns. Permanent public PDF links and expiring emailed viewer links that mark documents viewed.
+  (no headless browser), using the bundled DejaVu Sans font (`assets/fonts`, Bitstream Vera licence in
+  `assets/fonts/DejaVu-LICENSE.txt`) so Latin Extended, Greek and Cyrillic text renders. Item custom fields with "Show on document" print as extra line columns. Permanent public PDF links and expiring emailed viewer links that mark documents viewed.
 - **Email:** send dialog with preview, placeholders, optional PDF attachment, email log per document.
   Per-company mail drivers (Settings > Mail configuration, owner only): SMTP, Mailgun, Amazon SES (SigV4
   signed API call), Postmark, Sendmail/Mail, with a "Send test mail" dialog. Resolution order: company
@@ -81,7 +82,7 @@ Not built yet (planned, in this order):
 - The editor uses the browser's `execCommand`, which is deprecated but still supported by current browsers.
 - Administration: impersonation ("log in as"), backups, remote file disks, currency editing and PDF page setup
   are not implemented (optional per the spec). Profile photos are shown as a square crop but not re-encoded.
-- Unicode PDF font: PDFs use the built-in Helvetica, so text outside Latin-1 does not render.
+- PDFs embed DejaVu Sans, which has no CJK glyphs, and right-to-left scripts (Arabic, Hebrew) are not shaped.
 - Purchasing module (suppliers, bills, supplier payments, credits, refunds, recurring costs, purchases report).
 - End-to-end smoke test suite.
 

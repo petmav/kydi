@@ -1,5 +1,6 @@
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { Block } from "./html";
+import { fontBold, fontRegular } from "./fonts";
 
 /** Invoice / credit note / estimate PDF. Black on white, thin grey rules, three header layouts (spec §7.2–7.4). */
 
@@ -26,15 +27,15 @@ export type PdfDoc = {
 const GREY = "#94a3b8";
 const LIGHT = "#e2e8f0";
 const s = StyleSheet.create({
-  page: { padding: 40, fontSize: 9, fontFamily: "Helvetica", color: "#0f172a", lineHeight: 1.35 },
+  page: { padding: 40, fontSize: 9, ...fontRegular, color: "#0f172a", lineHeight: 1.35 },
   row: { flexDirection: "row" },
   between: { flexDirection: "row", justifyContent: "space-between" },
   rule: { borderBottomWidth: 0.75, borderBottomColor: GREY, marginVertical: 10 },
   heavyRule: { borderBottomWidth: 1.5, borderBottomColor: "#334155", marginVertical: 10 },
-  h: { fontFamily: "Helvetica-Bold" },
+  h: { ...fontBold },
   muted: { color: "#475569" },
   small: { fontSize: 8, color: "#64748b" },
-  th: { fontFamily: "Helvetica-Bold", fontSize: 8, color: "#334155", paddingVertical: 5 },
+  th: { ...fontBold, fontSize: 8, color: "#334155", paddingVertical: 5 },
   td: { paddingVertical: 5 },
   tableHead: { flexDirection: "row", borderTopWidth: 0.75, borderBottomWidth: 0.75, borderColor: GREY },
   tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: LIGHT },
