@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { isPublicHttpUrl } from "@/lib/net";
 
 /** Minimal Stripe Checkout client over the REST API (no Stripe SDK dependency). */
 
@@ -58,7 +59,7 @@ export function formEncode(params: Record<string, unknown>, prefix = ""): string
 
 export class StripeError extends Error {}
 
-async function call<T>(secretKey: string, method: "GET" | "POST", path: string, params?: Record<string, unknown>, idempotencyKey?: string): Promise<T> {
+async function call<T>(secretKey: string, method: "GET" | "POST" | "DELETE", path: string, params?: Record<string, unknown>, idempotencyKey?: string): Promise<T> {
   const headers: Record<string, string> = { Authorization: `Bearer ${secretKey}`, "Stripe-Version": STRIPE_API_VERSION };
   if (method === "POST") headers["Content-Type"] = "application/x-www-form-urlencoded";
   if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
@@ -124,4 +125,39 @@ export function stripeKeyMode(key: string | undefined): "test" | "live" | null {
 export async function checkStripeKey(secretKey: string): Promise<{ livemode: boolean }> {
   const r = await call<{ livemode: boolean }>(secretKey, "GET", "/balance");
   return { livemode: !!r.livemode };
+}
+
+/** Events Kydi's webhook handler acts on (src/app/api/payments/stripe/[companyId]/route.ts). */
+export const WEBHOOK_EVENTS = ["checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed", "checkout.session.expired"] as const;
+
+/** Why Stripe could not deliver to this webhook URL, or null when it can (public https only). */
+export function webhookUrlProblem(url: string): string | null {
+  if (!url.startsWith("https://")) return "Stripe only delivers webhooks to https addresses.";
+  if (!isPublicHttpUrl(url)) return "Stripe cannot reach a private or local address.";
+  return null;
+}
+
+export type WebhookEndpoint = { id: string; secret: string };
+
+/** Registers Kydi's webhook in the owner's Stripe account; the signing secret is only returned here. */
+export async function createWebhookEndpoint(secretKey: string, p: { url: string; description: string; metadata: Record<string, string> }): Promise<WebhookEndpoint> {
+  const r = await call<{ id: string; secret?: string }>(secretKey, "POST", "/webhook_endpoints", {
+    url: p.url,
+    enabled_events: [...WEBHOOK_EVENTS],
+    api_version: STRIPE_API_VERSION,
+    description: p.description,
+    metadata: p.metadata,
+  });
+  if (!r.secret) throw new StripeError("Stripe did not return a webhook signing secret.");
+  return { id: r.id, secret: r.secret };
+}
+
+export async function deleteWebhookEndpoint(secretKey: string, id: string): Promise<void> {
+  if (!/^we_[A-Za-z0-9]+$/.test(id)) return;
+  await call(secretKey, "DELETE", `/webhook_endpoints/${id}`);
+}
+
+/** Stripe's "missing permission" errors, so the UI can point at the restricted key settings. */
+export function isPermissionError(e: unknown): boolean {
+  return e instanceof StripeError && /permission/i.test(e.message);
 }

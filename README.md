@@ -216,24 +216,24 @@ PRODUCTION.md.
 
 ## Accepting payments with Stripe
 
-Each company connects its own Stripe account under **Settings → Online payments** (owner only).
+Each company connects its own Stripe account under **Settings → Online payments** (owner only). The page walks
+the owner through it; the owner only creates a Stripe account and pastes one key.
 
-1. **Restricted key.** In the Stripe Dashboard (use a [sandbox](https://docs.stripe.com/sandboxes) for testing),
-   go to Developers → API keys → Create restricted key → *Custom permissions*, and grant only
-   **Checkout Sessions: Write** and **Balance: Read**.
-2. **Webhook (required).** Developers → Webhooks → Add endpoint
-   `https://<APP_URL host>/api/payments/stripe/<companyId>` (the settings page shows the exact URL) with the events
-   `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`
-   and `checkout.session.expired`. Copy the endpoint's signing secret (`whsec_…`).
-   Locally: `stripe login`, then
+1. **Stripe account.** Sign up at Stripe. To take real payments, finish *Activate payments* (business and bank
+   details); payouts go to that bank account. Use a [sandbox](https://docs.stripe.com/sandboxes) to test first.
+2. **Restricted key.** Developers → API keys → Create restricted key → *Custom permissions*, and grant only
+   **Checkout Sessions: Write**, **Balance: Read** and **Webhook Endpoints, Event Destinations: Write**.
+3. **Paste it into Kydi** and save. Kydi checks the key, registers its webhook
+   (`https://<APP_URL host>/api/payments/stripe/<companyId>`, the four `checkout.session.*` events, API version
+   pinned) in the owner's Stripe account and stores the signing secret. A new key replaces the webhook;
+   **Disconnect Stripe** removes it. The banner shows test or live mode.
+   Stripe only delivers to public https addresses. Locally, run
    `stripe listen --forward-to localhost:3000/api/payments/stripe/<companyId> --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired`
-   and use the `whsec_…` it prints.
-3. **Kydi.** Choose *Stripe Checkout*, paste both values, save, then **Test connection**. The banner shows whether
-   the key is in test or live mode.
-4. **Go live.** Repeat 1–3 with live-mode keys and a live webhook endpoint; set `APP_URL` to the public HTTPS URL
-   (the Zenith publish manifest aliases it to `ZENITH_PUBLIC_URL`); keep `APP_ENCRYPTION_KEY` stable (changing it makes
-   stored keys unreadable); choose payment methods in the Stripe Dashboard (Kydi does not hard-code them); review
-   Stripe's [go-live checklist](https://docs.stripe.com/get-started/checklist/go-live).
+   and paste the `whsec_…` it prints under *Advanced*.
+4. **Go live.** Paste a live-mode key (`rk_live_…`); set `APP_URL` to the public HTTPS URL (the Zenith publish
+   manifest aliases it to `ZENITH_PUBLIC_URL`); keep `APP_ENCRYPTION_KEY` stable (changing it makes stored keys
+   unreadable); choose payment methods in the Stripe Dashboard (Kydi does not hard-code them); review Stripe's
+   [go-live checklist](https://docs.stripe.com/get-started/checklist/go-live).
 
 Test cards: `4242 4242 4242 4242` (success), `4000 0000 0000 0002` (declined), any future expiry and CVC.
 
