@@ -2,13 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { checkPasswordPolicy } from "@/lib/auth/password-policy";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { failure, parseForm, success, zEmail, zPassword, type ActionState } from "@/lib/action";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPasswordOrDummy } from "@/lib/auth/password";
+import { clientIp } from "@/lib/auth/cookies";
 import { createPortalSession, destroyPortalSession, getPortalCompany, requirePortalCustomer } from "@/lib/auth/portal";
 import { randomToken, sha256 } from "@/lib/auth/tokens";
-import { rateLimit } from "@/lib/rate-limit";
+import { clearCredentialFailures, rateLimit, throttleCredentials } from "@/lib/rate-limit";
 import { sendCompanyMail } from "@/server/mailer";
 import { getBaseUrl } from "@/lib/url";
 import { setFlash } from "@/lib/flash";
@@ -21,10 +23,11 @@ export async function portalLoginAction(slug: string, _prev: ActionState, formDa
   const parsed = parseForm(loginSchema, formData);
   if (!parsed.success) return parsed.state;
   const { email, password } = parsed.data;
-  if (!rateLimit(`portal:${company.id}:${email}`, 10, 60_000).ok) return failure("Too many attempts. Please wait a minute and try again.");
-  const customer = await db.customer.findFirst({ where: { companyId: company.id, email: { equals: email, mode: "insensitive" } } });
-  const ok = customer?.portalPasswordHash ? await verifyPassword(customer.portalPasswordHash, password) : false;
+  if (!throttleCredentials(`portal:${company.id}`, await clientIp(), email).ok) return failure("Too many attempts. Please wait a minute and try again.");
+  const customer = await db.customer.findFirst({ where: { companyId: company.id, email: { equals: email, mode: "insensitive" } }, omit: { portalPasswordHash: false } });
+  const ok = await verifyPasswordOrDummy(customer?.portalPasswordHash, password);
   if (!customer || !ok) return failure("Incorrect email or password.");
+  clearCredentialFailures(`portal:${company.id}`, email);
   if (!customer.enablePortal) return failure("Portal access is not enabled for this account. Please contact us.");
   await createPortalSession(customer.id);
   redirect(`/portal/${slug}`);
@@ -39,7 +42,8 @@ export async function portalForgotAction(slug: string, _prev: ActionState, formD
   const company = await getPortalCompany(slug);
   const parsed = parseForm(z.object({ email: zEmail }), formData);
   if (!parsed.success) return parsed.state;
-  if (!rateLimit(`portal-forgot:${company.id}:${parsed.data.email}`, 5, 15 * 60_000).ok) return failure("Too many requests. Please try again later.");
+  if (!rateLimit(`portal-forgot:ip:${await clientIp()}`, 5, 15 * 60_000).ok) return failure("Too many requests. Please try again later.");
+  if (!rateLimit(`portal-forgot:${company.id}:${parsed.data.email}`, 3, 60 * 60_000).ok) return success("If an account exists for that email, a reset link is on its way.");
   const customer = await db.customer.findFirst({ where: { companyId: company.id, email: { equals: parsed.data.email, mode: "insensitive" }, enablePortal: true } });
   if (customer?.email) {
     const token = randomToken();
@@ -59,11 +63,16 @@ export async function portalResetAction(slug: string, _prev: ActionState, formDa
   const rec = await db.portalResetToken.findUnique({ where: { tokenHash: sha256(parsed.data.token) } });
   const customer = rec ? await db.customer.findFirst({ where: { id: rec.customerId, companyId: company.id } }) : null;
   if (!rec || rec.usedAt || rec.expiresAt < new Date() || !customer) return failure("This reset link is invalid or has expired.");
-  await db.$transaction([
-    db.customer.update({ where: { id: customer.id }, data: { portalPasswordHash: await hashPassword(parsed.data.password) } }),
-    db.portalResetToken.update({ where: { id: rec.id }, data: { usedAt: new Date() } }),
-    db.portalSession.deleteMany({ where: { customerId: customer.id } }),
-  ]);
+  const portalPasswordHash = await hashPassword(parsed.data.password);
+  const done = await db.$transaction(async (tx) => {
+    const claimed = await tx.portalResetToken.updateMany({ where: { id: rec.id, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
+    if (claimed.count !== 1) return false;
+    await tx.customer.update({ where: { id: customer.id }, data: { portalPasswordHash } });
+    await tx.portalResetToken.deleteMany({ where: { customerId: customer.id, usedAt: null } });
+    await tx.portalSession.deleteMany({ where: { customerId: customer.id } });
+    return true;
+  });
+  if (!done) return failure("This reset link is invalid or has expired.");
   await setFlash("Password updated. Sign in with your new password.");
   redirect(`/portal/${slug}/login`);
 }
@@ -91,7 +100,7 @@ const profileSchema = z
     shippingStreet1: opt, shippingStreet2: opt, shippingCity: opt, shippingState: opt, shippingZip: opt, shippingPhone: opt,
   })
   .superRefine((d, c) => {
-    if (d.password && d.password.length < 8) c.addIssue({ code: z.ZodIssueCode.custom, path: ["password"], message: "Use at least 8 characters." });
+    { const weak = d.password ? checkPasswordPolicy(d.password) : null; if (weak) c.addIssue({ code: z.ZodIssueCode.custom, path: ["password"], message: weak }); }
     if (d.password && d.password !== d.confirm) c.addIssue({ code: z.ZodIssueCode.custom, path: ["confirm"], message: "Passwords do not match." });
   });
 

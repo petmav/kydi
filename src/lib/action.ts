@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ForbiddenError } from "@/lib/auth/context";
+import { checkPasswordPolicy } from "@/lib/auth/password-policy";
 
 export type FieldErrors = Record<string, string[] | undefined>;
 
@@ -90,7 +91,11 @@ export const zOptionalEmail = z
   .refine((v) => v === "" || z.string().email().safeParse(v).success, "Enter a valid email address.")
   .transform((v) => (v === "" ? null : v))
   .optional();
-export const zPassword = z.string().min(8, "Use at least 8 characters.").max(200, "Password is too long.");
+/** New passwords: length 10-200 and not a common password (src/lib/auth/password-policy.ts). */
+export const zPassword = z.string().superRefine((value, ctx) => {
+  const problem = checkPasswordPolicy(value);
+  if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
+});
 export const zCheckbox = z
   .union([z.literal("on"), z.literal("true"), z.literal("1"), z.literal(""), z.literal("false"), z.literal("0")])
   .optional()

@@ -18,6 +18,7 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
   if (!ctx.can("edit-customer")) return <Forbidden />;
   const id = parseId((await params).id);
   const c = await db.customer.findFirst({ where: { id, companyId: ctx.companyId } });
+  const hasPassword = !!(await db.customer.count({ where: { id, companyId: ctx.companyId, portalPasswordHash: { not: null } } }));
   if (!c) notFound();
   const pick = (prefix: "billing" | "shipping") => ({
     Name: c[`${prefix}Name`],
@@ -41,7 +42,7 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
       />
       <CustomerForm
         action={saveCustomerAction.bind(null, c.id)}
-        values={{ ...c, hasPassword: !!c.portalPasswordHash, billing: pick("billing"), shipping: pick("shipping") }}
+        values={{ ...c, hasPassword, billing: pick("billing"), shipping: pick("shipping") }}
         currencyLocked={await customerHasActivity(c.id)}
         customValues={await loadCustomFieldAnswers("Customer", c.id)}
         cancelHref={`/customers/${c.id}`}

@@ -1,6 +1,5 @@
 import { cache } from "react";
-import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import { db, type Tx } from "@/lib/db";
 
 const COMPANY_ADDRESS = `<p><strong>{COMPANY_NAME}</strong></p><p>{COMPANY_ADDRESS_STREET_1}</p><p>{COMPANY_ADDRESS_STREET_2}</p><p>{COMPANY_CITY} {COMPANY_STATE}</p><p>{COMPANY_COUNTRY} {COMPANY_ZIP_CODE}</p><p>{COMPANY_PHONE}</p>`;
 const BILLING_ADDRESS = `<h3>{BILLING_ADDRESS_NAME}</h3><p>{BILLING_ADDRESS_STREET_1}</p><p>{BILLING_ADDRESS_STREET_2}</p><p>{BILLING_CITY} {BILLING_STATE}</p><p>{BILLING_COUNTRY} {BILLING_ZIP_CODE}</p><p>{BILLING_PHONE}</p>`;
@@ -79,7 +78,7 @@ export const getCompanySettings = cache(async (companyId: number): Promise<Compa
 export async function saveCompanySettings(
   companyId: number,
   values: Partial<Record<SettingKey, string>>,
-  tx: Prisma.TransactionClient = db,
+  tx: Tx = db,
 ) {
   for (const [key, value] of Object.entries(values)) {
     if (typeof value !== "string") continue;

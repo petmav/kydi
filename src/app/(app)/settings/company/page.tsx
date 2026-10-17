@@ -31,7 +31,7 @@ export default async function CompanySettingsPage() {
                 <div className="flex h-16 w-16 items-center justify-center rounded-md border border-dashed border-line text-xs text-muted">No logo</div>
               )}
               <div className="flex-1 space-y-2">
-                <Field name="logo" label="Logo" type="file" accept="image/*" hint="PNG, JPG, GIF, WebP or SVG up to 2 MB." />
+                <Field name="logo" label="Logo" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hint="PNG, JPG, GIF or WebP up to 2 MB." />
                 {c.logoPath ? <CheckboxField name="removeLogo" label="Remove current logo" /> : null}
               </div>
             </div>

@@ -98,7 +98,7 @@ export async function adminSaveUser(id: number | null, input: AdminUserInput, ac
   if (id && !existing) return fail("User not found.");
   const clash = await db.user.findUnique({ where: { email: input.email } });
   if (clash && clash.id !== id) return fail("That email is already in use.", { email: ["That email is already in use."] });
-  if (!id && !input.password) return fail("Set a password for the new user.", { password: ["Use at least 8 characters."] });
+  if (!id && !input.password) return fail("Set a password for the new user.", { password: ["Use at least 10 characters."] });
   if (id === actorId && input.role !== "SUPER_ADMIN") return fail("You cannot remove your own administrator role.", { role: ["Keep your administrator role."] });
   const rows = await validateMemberships(id, input.memberships);
   if (typeof rows === "string") return fail(rows);

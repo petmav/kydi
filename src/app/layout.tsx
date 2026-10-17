@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Toaster } from "@/components/toast";
 import "./globals.css";
 
@@ -8,7 +9,10 @@ export const metadata: Metadata = {
   description: "Invoicing, estimates, payments and expenses for small businesses.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Reading request headers renders every page per request, so Next.js can apply the CSP nonce set by the
+  // middleware to its scripts (statically prerendered pages would carry no nonce and be blocked).
+  await headers();
   return (
     <html lang="en">
       <body className="min-h-screen antialiased">

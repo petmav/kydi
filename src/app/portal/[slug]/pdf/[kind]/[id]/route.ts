@@ -8,6 +8,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
   const session = await getPortalCustomer(slug);
   if (!session) return new Response("Unauthorized", { status: 401 });
   const id = Number(raw);
+  if (!Number.isInteger(id) || id <= 0) return new Response("Not found", { status: 404 });
   const where = { id, customerId: session.customer.id, companyId: session.company.id };
   let ok = false;
   if (kind === "invoices") ok = !!(await db.invoice.findFirst({ where: { ...where, status: { not: "DRAFT" } }, select: { id: true } }));

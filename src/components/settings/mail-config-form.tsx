@@ -18,7 +18,9 @@ type View = {
  * Mail driver form (spec §5.12). Stored secrets are never sent to the browser: secret inputs start empty and
  * show whether a value is saved; leaving them blank keeps the saved value.
  */
-export function MailConfigForm({ action, view, toggleLabel }: { action: FormAction; view: View; toggleLabel: string }) {
+export function MailConfigForm({ action, view, toggleLabel, scope = "platform" }: { action: FormAction; view: View; toggleLabel: string; scope?: "company" | "platform" }) {
+  // Company configurations cannot use the local sendmail binary (server-side rule in parseMailConfigForm).
+  const drivers = MAIL_DRIVERS.filter((d) => scope === "platform" || (d !== "sendmail" && d !== "mail") || d === view.driver);
   const [enabled, setEnabled] = useState(view.enabled);
   const [driver, setDriver] = useState<MailDriver>(view.driver);
   const sameDriver = driver === view.driver;
@@ -32,7 +34,7 @@ export function MailConfigForm({ action, view, toggleLabel }: { action: FormActi
           required
           value={driver}
           onChange={(e) => setDriver(e.target.value as MailDriver)}
-          options={MAIL_DRIVERS.map((d) => ({ value: d, label: DRIVER_LABELS[d] }))}
+          options={drivers.map((d) => ({ value: d, label: DRIVER_LABELS[d] }))}
           className="max-w-sm"
         />
         <div className="grid gap-4 sm:grid-cols-2" key={driver}>

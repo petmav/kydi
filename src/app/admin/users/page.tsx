@@ -36,7 +36,7 @@ function UserFields({
             { value: "SUPER_ADMIN", label: "Platform administrator" },
           ]}
         />
-        <Field name="password" label="Password" type="password" autoComplete="new-password" required={!user} hint={user ? "Leave blank to keep the current password." : "At least 8 characters."} className="sm:col-span-2" />
+        <Field name="password" label="Password" type="password" autoComplete="new-password" required={!user} hint={user ? "Leave blank to keep the current password." : "At least 10 characters."} className="sm:col-span-2" />
       </div>
       <fieldset className="rounded-md border border-line p-3">
         <legend className="px-1 text-sm font-medium">Company memberships</legend>

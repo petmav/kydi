@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { secureCookies } from "@/lib/auth/cookies";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -31,7 +32,7 @@ async function joinCompany(userId: number, inv: { id: number; companyId: number;
     db.user.update({ where: { id: userId }, data: { lastCompanyId: inv.companyId } }),
   ]);
   const jar = await cookies();
-  jar.set(COMPANY_COOKIE, String(inv.companyId), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+  jar.set(COMPANY_COOKIE, String(inv.companyId), { ...(await secureCookies()), maxAge: 60 * 60 * 24 * 365 });
 }
 
 export async function respondInvitationAction(token: string, accept: boolean): Promise<void> {

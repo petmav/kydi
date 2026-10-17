@@ -1,6 +1,6 @@
 import { cleanRichText } from "@/lib/sanitize-html";
 import { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import { db, type Tx } from "@/lib/db";
 import type { CompanyContext } from "@/lib/auth/context";
 import type { FieldErrors } from "@/lib/action";
 import { randomToken } from "@/lib/auth/tokens";
@@ -12,7 +12,6 @@ import { computeCreditNote, type CreditSource } from "@/domain/credit";
 import { buildDocument, copyLines, logExchangeRate, totalsData, writeLines, type DocumentInput } from "./documents";
 import { nextNumber } from "./numbers";
 
-type Tx = Prisma.TransactionClient;
 export type Result = { ok: true; id: number } | { ok: false; error: string; fieldErrors?: FieldErrors; status?: number };
 
 export const INVOICE_TEMPLATES = ["invoice1", "invoice2", "invoice3"];

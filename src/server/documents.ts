@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import { db, type Tx } from "@/lib/db";
 import type { CompanyContext } from "@/lib/auth/context";
 import type { FieldErrors } from "@/lib/action";
 import { MAX_MONEY, toMinor, roundTo } from "@/lib/money";
@@ -9,7 +9,6 @@ import { computeDocument, type DocumentResult, type TaxSpec } from "@/domain/tot
 import { getCustomFields, lineFieldsFrom, normalizeLineAnswers } from "@/lib/custom-fields";
 import { todayIn } from "@/lib/dates";
 
-type Tx = Prisma.TransactionClient;
 
 /** Shared document payload (invoice, estimate, recurring invoice). Money in major units unless `minor`. */
 export const lineSchema = z.object({

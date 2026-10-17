@@ -1,3 +1,4 @@
+import { env } from "@/lib/env";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { countryName } from "@/lib/intl-data";
@@ -55,7 +56,7 @@ export async function sendStatementEmail(companyId: number, customerId: number, 
   const base = await getBaseUrl();
   const html = layout({ companyName: company.name, logoUrl: company.logoPath ? `${base}/api/files/logo/${company.uniqueHash}` : null, body: sanitizeHtml(fillPlaceholders(input.body, values)) });
   await db.emailLog.create({
-    data: { companyId, from: process.env.SMTP_FROM || "Kydi <no-reply@kydi.local>", to: input.email, cc: input.cc || null, bcc: input.bcc || null, subject, body: html, mailableType: "statement", mailableId: customerId, token: randomToken(32) },
+    data: { companyId, from: env.smtp.from, to: input.email, cc: input.cc || null, bcc: input.bcc || null, subject, body: html, mailableType: "statement", mailableId: customerId, token: randomToken(32) },
   });
   try {
     await sendCompanyMail(companyId, {

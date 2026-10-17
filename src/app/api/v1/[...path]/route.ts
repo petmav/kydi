@@ -1,8 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { verifyPassword } from "@/lib/auth/password";
+import { verifyPasswordOrDummy } from "@/lib/auth/password";
+import { clientIpFrom } from "@/lib/request-meta";
 import { randomToken, sha256 } from "@/lib/auth/tokens";
-import { rateLimit } from "@/lib/rate-limit";
+import { clearCredentialFailures, throttleCredentials } from "@/lib/rate-limit";
 import { parseIsoDate } from "@/lib/dates";
 import { ApiError, apiContext, apiUser, cfFromBody, envelope, fail, listParams, need, ok, unwrap } from "@/server/api";
 import { teamRouter } from "@/server/v1/team";
@@ -221,23 +222,35 @@ const simpleLists: Record<string, (ctx: CompanyContext) => Promise<unknown[]>> =
 
 async function login(req: Request) {
   const body = (await req.json()) as { email?: string; username?: string; password?: string; device_name?: string };
-  const email = String(body.email ?? body.username ?? "").trim().toLowerCase();
-  if (!rateLimit(`api-login:${email}`, 10, 60_000).ok) throw new ApiError(429, "Too many attempts.");
-  const user = await db.user.findUnique({ where: { email } });
-  if (!user || !(await verifyPassword(user.passwordHash, String(body.password ?? "")))) throw new ApiError(422, "The provided credentials are incorrect.", { email: ["invalid_credentials"] });
+  const email = String(body.email ?? body.username ?? "").trim().toLowerCase().slice(0, 255);
+  if (!throttleCredentials("api-login", clientIpFrom(req.headers), email).ok) throw new ApiError(429, "Too many attempts.");
+  const user = await db.user.findUnique({ where: { email }, select: { id: true, passwordHash: true } });
+  const valid = await verifyPasswordOrDummy(user?.passwordHash, String(body.password ?? "").slice(0, 1000));
+  if (!user || !valid) throw new ApiError(422, "The provided credentials are incorrect.", { email: ["invalid_credentials"] });
+  clearCredentialFailures("api-login", email);
   const prefix = randomToken(6).replace(/[^A-Za-z0-9]/g, "x").slice(0, 8);
   const token = `kyd_${prefix}_${randomToken(32)}`;
   await db.apiToken.create({ data: { userId: user.id, name: String(body.device_name ?? "API client").slice(0, 80), prefix, tokenHash: sha256(token) } });
   return ok({ type: "Bearer", token });
 }
 
+/** Revokes the bearer token used for this request (spec §2.2: logout invalidates the current token). */
+async function logout(req: Request) {
+  const auth = req.headers.get("authorization") ?? "";
+  if (!/^bearer\s+/i.test(auth)) throw new ApiError(400, "Send the token to revoke as a Bearer token.");
+  const r = await db.apiToken.deleteMany({ where: { tokenHash: sha256(auth.replace(/^bearer\s+/i, "").trim()) } });
+  if (!r.count) throw new ApiError(401, "Unauthenticated.");
+  return ok({ success: true });
+}
+
 async function route(req: Request, segments: string[]): Promise<Response> {
   const url = new URL(req.url);
   const method = req.method;
   if (segments[0] === "auth" && segments[1] === "login" && method === "POST") return login(req);
+  if (segments[0] === "auth" && segments[1] === "logout" && method === "POST") return logout(req);
   // Invitation answers work for signed-in users without any company yet (spec §2.4, §5.10).
   if (segments[0] === "company-invitations" && segments[1] && (segments[2] === "accept" || segments[2] === "decline") && method === "POST") {
-    const user = await apiUser();
+    const user = await apiUser(method);
     const companyId = unwrap(await respondToInvitation(user, segments[1], segments[2] === "accept"));
     return ok({ success: true, company_id: companyId });
   }
@@ -246,14 +259,12 @@ async function route(req: Request, segments: string[]): Promise<Response> {
     const rows = await pendingInvitationsFor(user.email);
     return ok({ data: rows.map((r) => ({ id: r.id, token: r.token, company: r.company, role: r.role.title, expires_at: r.expiresAt })) });
   }
-  const ctx = await apiContext();
+  const ctx = await apiContext(method);
   const body: Record<string, unknown> = method === "GET" || method === "DELETE" ? {} : ((await req.json().catch(() => ({}))) as Record<string, unknown>);
   const [resource, second, third] = segments;
   if (resource === "auth" && second === "check") return ok({ data: { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email } });
   if (resource === "bootstrap") {
-    const { passwordHash: _p, ...user } = ctx.user;
-    void _p;
-    return ok({ current_user: user, current_company: ctx.company, current_company_settings: ctx.settings, current_user_abilities: [...ctx.abilities], is_owner: ctx.isOwner, companies: ctx.memberships.map((m) => ({ id: m.companyId, name: m.company.name })) });
+    return ok({ current_user: ctx.user, current_company: ctx.company, current_company_settings: ctx.settings, current_user_abilities: [...ctx.abilities], is_owner: ctx.isOwner, companies: ctx.memberships.map((m) => ({ id: m.companyId, name: m.company.name })) });
   }
   if (resource === "dashboard" && method === "GET") {
     need(ctx, "dashboard");

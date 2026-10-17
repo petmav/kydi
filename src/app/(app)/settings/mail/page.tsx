@@ -40,7 +40,7 @@ export default async function MailPage() {
             Emails are sent through {fallback}.
           </Alert>
         )}
-        <MailConfigForm action={saveMailConfigAction} view={own} toggleLabel="Use custom mail configuration" />
+        <MailConfigForm action={saveMailConfigAction} view={own} toggleLabel="Use custom mail configuration" scope="company" />
       </CardBody>
     </Card>
   );

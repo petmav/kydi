@@ -6,6 +6,7 @@ import { htmlToText, sendMail, type MailMessage } from "@/lib/mail";
 import { decryptJson } from "@/lib/secrets";
 import { signV4 } from "@/lib/aws-sigv4";
 import { formatFrom, isMailDriver, type MailDriver } from "@/lib/mail-config";
+import { BlockedDestinationError, resolvePublicAddresses } from "@/lib/safe-fetch";
 
 /**
  * Outgoing mail resolution (spec §5.12): company custom configuration (when switched on) → platform
@@ -81,8 +82,18 @@ export async function deliverWith(cfg: ResolvedMail, message: MailMessage): Prom
   switch (cfg.driver) {
     case "smtp": {
       const enc = o.encryption ?? "starttls";
+      // Tenant-supplied hosts: resolve once, refuse non-public addresses and connect to the checked IP while
+      // TLS still verifies the certificate against the host name (no DNS rebinding window).
+      let host = o.host;
+      let tls: { servername: string } | undefined;
+      if (cfg.source === "company") {
+        const [addr] = await resolvePublicAddresses(o.host ?? "");
+        host = addr.address;
+        tls = { servername: o.host };
+      }
       const transport = nodemailer.createTransport({
-        host: o.host,
+        host,
+        ...(tls ? { tls } : {}),
         port: Number(o.port || 587),
         secure: enc === "ssl" || enc === "tls",
         requireTLS: enc === "starttls",
@@ -96,6 +107,7 @@ export async function deliverWith(cfg: ResolvedMail, message: MailMessage): Prom
     }
     case "sendmail":
     case "mail": {
+      if (cfg.source === "company") throw new BlockedDestinationError("The local sendmail transport is only available in the platform mail configuration.");
       const transport = nodemailer.createTransport({ sendmail: true, newline: "unix" });
       await transport.sendMail({ from, to: message.to, cc: message.cc, bcc: message.bcc, replyTo: message.replyTo, subject: message.subject, html: message.html, text, attachments: message.attachments });
       return { delivered: true, transport: cfg.driver };
@@ -106,6 +118,7 @@ export async function deliverWith(cfg: ResolvedMail, message: MailMessage): Prom
       form.append("to", [...list(message.to), ...list(message.cc), ...list(message.bcc)].join(","));
       form.append("message", new Blob([new Uint8Array(mime)], { type: "message/rfc822" }), "message.mime");
       const host = o.endpoint === "api.eu.mailgun.net" ? "api.eu.mailgun.net" : "api.mailgun.net";
+      if (!/^[a-zA-Z0-9.-]+$/.test(o.domain ?? "")) throw new BlockedDestinationError("The Mailgun domain is not valid.");
       const res = await fetch(`https://${host}/v3/${encodeURIComponent(o.domain ?? "")}/messages.mime`, {
         method: "POST",
         headers: { Authorization: `Basic ${Buffer.from(`api:${s.secret ?? ""}`).toString("base64")}` },
@@ -137,6 +150,7 @@ export async function deliverWith(cfg: ResolvedMail, message: MailMessage): Prom
     }
     case "ses": {
       const region = o.region ?? "us-east-1";
+      if (!/^[a-z]{2}(-[a-z]+)+-[0-9]$/.test(region)) throw new BlockedDestinationError("The Amazon SES region is not valid.");
       const mime = await rawMime(message, from);
       const body = JSON.stringify({
         FromEmailAddress: from,

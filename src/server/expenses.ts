@@ -5,7 +5,7 @@ import type { FieldErrors } from "@/lib/action";
 import { MAX_MONEY, roundTo, toBase, toMinor } from "@/lib/money";
 import { parseIsoDate, todayIn } from "@/lib/dates";
 import { isCurrency } from "@/lib/intl-data";
-import { deleteStoredFile, extensionOf, RECEIPT_EXTENSIONS, storeFile } from "@/lib/storage";
+import { deleteStoredFile, extensionOf, mimeFor, RECEIPT_EXTENSIONS, sniffReceipt, storeFile } from "@/lib/storage";
 import { saveCustomFieldAnswers, validateCustomFieldAnswers } from "@/lib/custom-fields";
 import { logExchangeRate } from "./documents";
 import type { Result } from "./invoices";
@@ -51,19 +51,26 @@ export async function saveExpense(ctx: CompanyContext, id: number | null, input:
   if (new Set(taxes.map((t) => t.taxTypeId)).size !== taxes.length) errors.taxes = ["Each tax can be listed once."];
   if (taxes.some((t) => !Number.isInteger(t.amount) || t.amount < 0)) errors.taxes = ["Tax amounts must be 0 or more."];
   if (taxes.length && (await db.taxType.count({ where: { id: { in: taxes.map((t) => t.taxTypeId) }, companyId: ctx.companyId, transactionType: "PURCHASES" } })) !== taxes.length) errors.taxes = ["Only purchase tax types can be used on expenses."];
+  let receiptBytes: Buffer | null = null;
+  let receiptExt: string | null = null;
   if (receipt && receipt.size > 0) {
     if (!RECEIPT_EXTENSIONS.includes(extensionOf(receipt.name))) errors.receipt = ["Allowed: jpg, png, pdf, doc, docx, xls, xlsx, ppt, pptx."];
     else if (receipt.size > MAX_RECEIPT) errors.receipt = ["Maximum size is 20 MB."];
+    else {
+      receiptBytes = Buffer.from(await receipt.arrayBuffer());
+      receiptExt = sniffReceipt(receiptBytes, extensionOf(receipt.name));
+      if (!receiptExt) errors.receipt = ["The file content does not match an allowed type (jpg, png, pdf, doc, docx, xls, xlsx, ppt, pptx)."];
+    }
   }
   if (Object.keys(errors).length) return { ok: false, error: "Please correct the highlighted fields.", fieldErrors: errors };
   const cf = await validateCustomFieldAnswers(ctx.companyId, "Expense", cfSource, todayIn(ctx.settings.time_zone));
   if (!cf.ok) return { ok: false, error: "Please correct the highlighted fields.", fieldErrors: cf.errors };
 
   let receiptData: { receiptPath: string | null; receiptName: string | null; receiptMime: string | null; receiptSize: number | null } | undefined;
-  if (receipt && receipt.size > 0) {
-    const path = await storeFile(`receipts/${ctx.companyId}`, receipt.name, Buffer.from(await receipt.arrayBuffer()));
+  if (receipt && receipt.size > 0 && receiptBytes && receiptExt) {
+    const path = await storeFile(`receipts/${ctx.companyId}`, `receipt.${receiptExt}`, receiptBytes);
     await deleteStoredFile(existing?.receiptPath);
-    receiptData = { receiptPath: path, receiptName: receipt.name.slice(0, 255), receiptMime: receipt.type || null, receiptSize: receipt.size };
+    receiptData = { receiptPath: path, receiptName: receipt.name.slice(0, 255), receiptMime: mimeFor(path), receiptSize: receipt.size };
   } else if (input.removeReceipt && existing?.receiptPath) {
     await deleteStoredFile(existing.receiptPath);
     receiptData = { receiptPath: null, receiptName: null, receiptMime: null, receiptSize: null };

@@ -1,5 +1,5 @@
-import type { CustomField, Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import type { CustomField } from "@prisma/client";
+import { db, type Tx } from "@/lib/db";
 import type { FieldErrors } from "@/lib/action";
 
 /** Custom field definitions + answers, spec §3.14. Answers are stored as normalised text. */
@@ -112,7 +112,7 @@ export async function validateCustomFieldAnswers(
 }
 
 export async function saveCustomFieldAnswers(
-  tx: Prisma.TransactionClient,
+  tx: Tx,
   companyId: number,
   modelType: CfModel,
   modelId: number,
@@ -128,7 +128,7 @@ export async function saveCustomFieldAnswers(
 }
 
 export async function copyCustomFieldAnswers(
-  tx: Prisma.TransactionClient,
+  tx: Tx,
   from: { modelType: CfModel; modelId: number },
   to: { modelType: CfModel; modelId: number },
 ) {

@@ -299,11 +299,16 @@ export async function runScheduler(now = new Date()) {
   if (running) return { skipped: true };
   running = true;
   try {
-    const generated = await runDueSchedules(now);
-    const { runDueRecurringCosts } = await import("./purchasing");
-    const costs = await runDueRecurringCosts(now);
-    const sweeps = await runSweeps(now);
-    return { skipped: false, generated, costs, ...sweeps };
+    // Cross-process guard: with several replicas (or a cron call during a timer tick) only one runs the jobs.
+    const { LOCKS, withAdvisoryLock } = await import("./locks");
+    const r = await withAdvisoryLock(LOCKS.scheduler, async () => {
+      const generated = await runDueSchedules(now);
+      const { runDueRecurringCosts } = await import("./purchasing");
+      const costs = await runDueRecurringCosts(now);
+      const sweeps = await runSweeps(now);
+      return { skipped: false, generated, costs, ...sweeps };
+    });
+    return r.acquired ? r.result : { skipped: true, reason: "another process holds the scheduler lock" };
   } finally {
     running = false;
   }

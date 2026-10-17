@@ -10,7 +10,7 @@ import { COMPANY_COOKIE, requireOwner } from "@/lib/auth/context";
 import { saveCompanySettings, type SettingKey } from "@/lib/settings";
 import { isCurrency } from "@/lib/intl-data";
 import { companyProfileSchema, preferencesSchema, SETTINGS_SECTIONS } from "@/server/company-settings";
-import { deleteStoredFile, extensionOf, IMAGE_EXTENSIONS, storeFile } from "@/lib/storage";
+import { deleteStoredFile, extensionOf, IMAGE_EXTENSIONS, sniffImage, storeFile } from "@/lib/storage";
 import { setFlash } from "@/lib/flash";
 import { companyHasFinancialData, deleteCompany } from "@/lib/companies";
 import { saveCustomFieldAnswers, validateCustomFieldAnswers } from "@/lib/custom-fields";
@@ -33,9 +33,12 @@ export async function updateCompanyAction(_prev: ActionState, formData: FormData
     let logoPath = ctx.company.logoPath;
     const logo = formData.get("logo");
     if (logo instanceof File && logo.size > 0) {
-      if (!IMAGE_EXTENSIONS.includes(extensionOf(logo.name))) return failure("Logo must be an image.", { logo: ["Upload a JPG, PNG, GIF, WebP or SVG image."] });
+      if (!IMAGE_EXTENSIONS.includes(extensionOf(logo.name))) return failure("Logo must be an image.", { logo: ["Upload a JPG, PNG, GIF or WebP image."] });
       if (logo.size > 2 * 1024 * 1024) return failure("Logo is too large.", { logo: ["Maximum size is 2 MB."] });
-      const stored = await storeFile(`logos/${ctx.companyId}`, logo.name, Buffer.from(await logo.arrayBuffer()));
+      const bytes = Buffer.from(await logo.arrayBuffer());
+      const kind = sniffImage(bytes);
+      if (!kind) return failure("Logo must be an image.", { logo: ["The file is not a valid JPG, PNG, GIF or WebP image."] });
+      const stored = await storeFile(`logos/${ctx.companyId}`, `logo.${kind}`, bytes);
       await deleteStoredFile(logoPath);
       logoPath = stored;
     } else if (removeLogo === "on") {

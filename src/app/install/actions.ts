@@ -11,6 +11,9 @@ import { COMPANY_COOKIE } from "@/lib/auth/context";
 import { createCompanyForUser } from "@/lib/companies";
 import { isCurrency, isTimezone } from "@/lib/intl-data";
 import { setFlash } from "@/lib/flash";
+import { secureCookies } from "@/lib/auth/cookies";
+import { checkInstallAttempt, consumeInstallToken, installPolicy, lockInstall } from "@/server/install";
+import { checkPasswordPolicy } from "@/lib/auth/password-policy";
 
 const adminSchema = z
   .object({
@@ -18,21 +21,32 @@ const adminSchema = z
     email: zEmail,
     password: zPassword,
     confirm: z.string(),
+    install_token: z.string().trim().max(64).optional(),
   })
   .refine((d) => d.password === d.confirm, { path: ["confirm"], message: "Passwords do not match." });
 
 export async function installAdminAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = parseForm(adminSchema, formData);
   if (!parsed.success) return parsed.state;
-  const { name, email, password } = parsed.data;
+  const { name, email, password, install_token } = parsed.data;
+  const weak = checkPasswordPolicy(password, { email, name });
+  if (weak) return failure(weak, { password: [weak] });
   const passwordHash = await hashPassword(password);
+  const policy = installPolicy();
 
-  const created = await db.$transaction(async (tx) => {
-    if ((await tx.user.count()) > 0) return null;
-    return tx.user.create({ data: { name, email, passwordHash, role: "SUPER_ADMIN" } });
+  const result = await db.$transaction(async (tx) => {
+    await lockInstall(tx);
+    const check = await checkInstallAttempt(tx, email, install_token, policy);
+    if (!check.ok) return check;
+    const user = await tx.user.create({ data: { name, email, passwordHash, role: "SUPER_ADMIN" } });
+    await consumeInstallToken(tx);
+    return { ok: true as const, user };
   });
-  if (!created) return failure("Kydi is already installed. Sign in instead.");
-  await createSession(created.id);
+  if (!result.ok) {
+    return failure(result.message, result.field === "form" ? undefined : { [result.field === "token" ? "install_token" : "email"]: [result.message] });
+  }
+  console.log(`[kydi] install: first administrator created (user id ${result.user.id})`);
+  await createSession(result.user.id);
   redirect("/install/company");
 }
 
@@ -67,7 +81,7 @@ export async function createCompanyAction(_prev: ActionState, formData: FormData
   }
   const company = await createCompanyForUser(user.id, parsed.data);
   const jar = await cookies();
-  jar.set(COMPANY_COOKIE, String(company.id), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+  jar.set(COMPANY_COOKIE, String(company.id), { ...(await secureCookies()), maxAge: 60 * 60 * 24 * 365 });
   await setFlash(memberships === 0 ? `Welcome to Kydi! ${company.name} is ready.` : `${company.name} created.`);
   redirect("/dashboard");
 }

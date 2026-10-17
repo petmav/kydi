@@ -1,3 +1,4 @@
+import { checkPasswordPolicy } from "@/lib/auth/password-policy";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -61,7 +62,7 @@ export const customerSchema = z
     ...addressShape("shipping"),
   })
   .superRefine((d, c) => {
-    if (d.password && d.password.length < 8) c.addIssue({ code: z.ZodIssueCode.custom, path: ["password"], message: "Use at least 8 characters." });
+    { const weak = d.password ? checkPasswordPolicy(d.password) : null; if (weak) c.addIssue({ code: z.ZodIssueCode.custom, path: ["password"], message: weak }); }
     if (d.password && d.confirm !== undefined && d.confirm !== null && d.password !== d.confirm) {
       c.addIssue({ code: z.ZodIssueCode.custom, path: ["confirm"], message: "Passwords do not match." });
     }
@@ -87,7 +88,7 @@ export async function saveCustomer(
   input: CustomerInput,
   customFieldSource: FormData | Record<string, unknown>,
 ): Promise<SaveResult> {
-  const existing = id ? await db.customer.findFirst({ where: { id, companyId: ctx.companyId } }) : null;
+  const existing = id ? await db.customer.findFirst({ where: { id, companyId: ctx.companyId }, omit: { portalPasswordHash: false } }) : null;
   if (id && !existing) return { ok: false, error: "Customer not found.", status: 404 };
 
   if (input.email) {

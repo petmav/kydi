@@ -10,7 +10,7 @@ export default async function PortalResetPage({ params }: { params: Promise<{ sl
   const { slug, token } = await params;
   await getPortalCompany(slug);
   return (
-    <PortalCard title="Choose a new password" subtitle="Use at least 8 characters.">
+    <PortalCard title="Choose a new password" subtitle="Use at least 10 characters.">
       <PortalResetForm action={portalResetAction.bind(null, slug)} token={token} />
     </PortalCard>
   );

@@ -1,7 +1,6 @@
 import { cleanRichText } from "@/lib/sanitize-html";
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import { db, type Tx } from "@/lib/db";
 import type { CompanyContext } from "@/lib/auth/context";
 import type { FieldErrors } from "@/lib/action";
 import { randomToken } from "@/lib/auth/tokens";
@@ -13,7 +12,6 @@ import { DomainError, recalcInvoice, type Result } from "./invoices";
 import { nextNumber } from "./numbers";
 import { logExchangeRate } from "./documents";
 
-type Tx = Prisma.TransactionClient;
 
 export const paymentSchema = z.object({
   customerId: z.coerce.number({ invalid_type_error: "Choose a customer." }).int().positive("Choose a customer."),

@@ -8,8 +8,9 @@ import type { CompanyContext } from "@/lib/auth/context";
 import { saveInvoice, markInvoiceSent } from "./invoices";
 import { saveEstimate, setEstimateStatus } from "./estimates";
 
-export const DEMO_EMAIL = "admin@kydi.test";
-export const DEMO_PASSWORD = "password123";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "./demo-credentials";
+
+export { DEMO_EMAIL, DEMO_PASSWORD };
 
 type Ctx = CompanyContext;
 
@@ -27,7 +28,15 @@ export async function systemContext(companyId: number, userId: number): Promise<
 type Extra = (ctx: Ctx, refs: SeedRefs) => Promise<void>;
 export type SeedRefs = { customers: { id: number; name: string; currency: string }[]; invoices: number[]; today: string; taxes: Record<string, number> };
 
+/** Demo data is refused in production unless KYDI_DEMO_SEED=true is set explicitly. */
+export function demoSeedAllowed(env: { NODE_ENV?: string; KYDI_DEMO_SEED?: string } = process.env): boolean {
+  return env.NODE_ENV !== "production" || env.KYDI_DEMO_SEED === "true";
+}
+
 export async function seedDemo(extra?: Extra): Promise<{ created: boolean }> {
+  if (!demoSeedAllowed()) {
+    throw new Error("Refusing to seed demo data in production. Set KYDI_DEMO_SEED=true explicitly (never on an instance with real data).");
+  }
   if ((await db.user.count()) > 0) return { created: false };
   const user = await db.user.create({ data: { name: "Alex Morgan", email: DEMO_EMAIL, passwordHash: await hashPassword(DEMO_PASSWORD), role: "SUPER_ADMIN" } });
   const company = await createCompanyForUser(user.id, { name: "Northwind Studio", currency: "USD", country: "US", time_zone: "America/New_York", date_format: "MMM d, yyyy", locale: "en-US", fiscal_year: "1-12" });

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { decryptSecret, encryptSecret } from "@/lib/secrets";
 import { isCurrency } from "@/lib/intl-data";
 import { isPublicHttpUrl } from "@/lib/net";
+import { safeRequest } from "@/lib/safe-fetch";
 import { currencyConflicts, isRateDriver, parseRateResponse, rateRequestUrl, RATE_DRIVERS, type DriverConfig, type RateDriver } from "@/lib/exchange-rates";
 import type { FieldErrors } from "@/lib/action";
 
@@ -102,9 +103,16 @@ export async function fetchProviderRate(p: { id: number; driver: string; keyEncr
   if (!key) throw new Error("The stored API key cannot be read. Enter it again.");
   const url = rateRequestUrl(p.driver, key, (p.driverConfig ?? {}) as DriverConfig, foreign, base);
   if (!url) throw new Error("The provider URL is not allowed.");
-  const res = await fetch(url, { signal: AbortSignal.timeout(5000), headers: { Accept: "application/json" }, redirect: "error" });
-  if (!res.ok) throw new Error(`The provider answered HTTP ${res.status}.`);
-  const rate = parseRateResponse(p.driver, await res.json(), foreign, base);
+  // Connect-time SSRF guard: public addresses only, no redirects, 5 s timeout, 1 MB cap (src/lib/safe-fetch.ts).
+  const res = await safeRequest(url, { headers: { Accept: "application/json" }, timeoutMs: 5000, maxBytes: 1_000_000 });
+  if (res.status < 200 || res.status >= 300) throw new Error(`The provider answered HTTP ${res.status}.`);
+  let json: unknown;
+  try {
+    json = JSON.parse(res.body);
+  } catch {
+    throw new Error("The provider did not return JSON.");
+  }
+  const rate = parseRateResponse(p.driver, json, foreign, base);
   if (rate === null) throw new Error(`The provider returned no rate for ${foreign}/${base}.`);
   return rate;
 }

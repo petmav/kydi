@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { isSecureRequest } from "@/lib/auth/cookies";
 
 export const FLASH_COOKIE = "kydi_flash";
 
@@ -10,5 +11,6 @@ export async function setFlash(message: string, variant: "success" | "error" | "
     maxAge: 30,
     sameSite: "lax",
     httpOnly: false,
+    secure: await isSecureRequest(),
   });
 }

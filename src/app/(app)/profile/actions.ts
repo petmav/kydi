@@ -6,7 +6,8 @@ import { db } from "@/lib/db";
 import { failure, guard, parseForm, success, zEmail, zPassword, type ActionState } from "@/lib/action";
 import { requireUser } from "@/lib/auth/context";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { destroyAllSessions } from "@/lib/auth/session";
+import { destroyAllSessions, rotateSessions } from "@/lib/auth/session";
+import { checkPasswordPolicy } from "@/lib/auth/password-policy";
 import { AVATAR_EXTENSIONS, deleteStoredFile, extensionOf, sniffImage, storeFile } from "@/lib/storage";
 
 const profileSchema = z.object({
@@ -38,11 +39,15 @@ export async function changePasswordAction(_prev: ActionState, formData: FormDat
     const user = await requireUser();
     const parsed = parseForm(passwordSchema, formData);
     if (!parsed.success) return parsed.state;
-    if (!(await verifyPassword(user.passwordHash, parsed.data.current))) {
+    const stored = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { passwordHash: true } });
+    if (!(await verifyPassword(stored.passwordHash, parsed.data.current))) {
       return failure("Current password is incorrect.", { current: ["Current password is incorrect."] });
     }
+    const weak = checkPasswordPolicy(parsed.data.password, user);
+    if (weak) return failure(weak, { password: [weak] });
     await db.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(parsed.data.password) } });
-    await destroyAllSessions(user.id, true);
+    // Rotate: every existing session (including this one) is revoked and this browser gets a fresh session.
+    await rotateSessions(user.id);
     return success("Password changed. Other sessions were signed out.");
   });
 }

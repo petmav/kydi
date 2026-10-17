@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import { db, type Tx } from "@/lib/db";
 import type { CompanyContext } from "@/lib/auth/context";
 import type { FieldErrors } from "@/lib/action";
 import { getCompanySettings } from "@/lib/settings";
@@ -17,7 +16,6 @@ import { logExchangeRate } from "./documents";
 
 /** Purchasing: suppliers, bills, supplier credits, payments, refunds and recurring costs (spec §3.20, §4.14). */
 
-type Tx = Prisma.TransactionClient;
 export type PResult = { ok: true; id: number } | { ok: false; error: string; fieldErrors?: FieldErrors; status?: number };
 const fail = (error: string, fieldErrors?: FieldErrors, status?: number): PResult => ({ ok: false, error, fieldErrors, status });
 const optId = z.union([z.string(), z.number()]).optional().nullable().transform((v) => (v === "" || v == null ? null : Number(v)));

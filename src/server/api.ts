@@ -6,6 +6,7 @@ import { SESSION_COOKIE } from "@/lib/auth/session";
 import { ALL_ABILITIES, type Ability } from "@/lib/abilities";
 import { getCompanySettings } from "@/lib/settings";
 import { plain } from "@/lib/money";
+import { isSameOriginRequest } from "@/lib/request-meta";
 import type { CompanyContext } from "@/lib/auth/context";
 
 /** REST API plumbing (spec §9.1): bearer token or session cookie, `company` header, JSON envelopes. */
@@ -17,7 +18,7 @@ export class ApiError extends Error {
 }
 
 /** Authenticates the caller (bearer token or session cookie) without resolving a company. */
-export async function apiUser() {
+export async function apiUser(method = "GET") {
   const h = await headers();
   let userId: number | null = null;
   const auth = h.get("authorization");
@@ -28,6 +29,8 @@ export async function apiUser() {
     userId = t.userId;
     await db.apiToken.update({ where: { id: t.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
   } else {
+    // Cookie authentication: refuse cross-site writes (CSRF), e.g. from sibling subdomains that count as same-site.
+    if (!["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase()) && !isSameOriginRequest(h)) throw new ApiError(403, "Cross-site request refused.");
     const raw = unsignValue((await cookies()).get(SESSION_COOKIE)?.value);
     const s = raw ? await db.session.findUnique({ where: { tokenHash: sha256(raw) } }) : null;
     if (!s || s.expiresAt < new Date()) throw new ApiError(401, "Unauthenticated.");
@@ -38,9 +41,9 @@ export async function apiUser() {
   return user;
 }
 
-export async function apiContext(): Promise<CompanyContext> {
+export async function apiContext(method = "GET"): Promise<CompanyContext> {
   const h = await headers();
-  const user = await apiUser();
+  const user = await apiUser(method);
   const memberships = await db.companyUser.findMany({ where: { userId: user.id }, include: { company: true, role: true }, orderBy: { createdAt: "asc" } });
   if (!memberships.length) throw new ApiError(403, "No company membership.");
   const wanted = Number(h.get("company"));

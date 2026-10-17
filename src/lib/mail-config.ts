@@ -86,6 +86,9 @@ export function parseMailConfigForm(obj: Record<string, unknown>, existingSecret
   const driver = str("driver");
   const errors: Record<string, string[]> = {};
   if (!isMailDriver(driver)) return { ok: false, error: "Choose a mail driver.", fieldErrors: { driver: ["Choose a mail driver."] } };
+  if (scope === "company" && (driver === "sendmail" || driver === "mail")) {
+    return { ok: false, error: "Choose a mail driver.", fieldErrors: { driver: ["The local sendmail transport is only available in the platform mail configuration."] } };
+  }
   const fromAddress = str("fromAddress") || null;
   const fromName = str("fromName") || null;
   if (driver === "smtp" && !fromAddress) errors.fromAddress = ["Enter the sender address."];

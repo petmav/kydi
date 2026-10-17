@@ -9,7 +9,8 @@ const ABILITY = { invoice: "view-invoice", estimate: "view-estimate", payment: "
 /** Authenticated staff PDF for any document of the active company. */
 export async function GET(req: Request, { params }: { params: Promise<{ kind: string; id: string }> }) {
   const { kind, id } = await params;
-  if (!(kind in ABILITY)) return new Response("Not found", { status: 404 });
+  const docId = Number(id);
+  if (!(kind in ABILITY) || !Number.isInteger(docId) || docId <= 0) return new Response("Not found", { status: 404 });
   const user = await getSessionUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   const jar = await cookies();
@@ -19,7 +20,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
   if (!m) return new Response("Forbidden", { status: 403 });
   const allowed = m.company.ownerId === user.id || m.role.abilities.includes(ABILITY[kind as keyof typeof ABILITY]);
   if (!allowed) return new Response("Forbidden", { status: 403 });
-  const file = await pdfFor(kind as keyof typeof ABILITY, m.companyId, Number(id));
+  const file = await pdfFor(kind as keyof typeof ABILITY, m.companyId, docId);
   if (!file) return new Response("Not found", { status: 404 });
   return pdfResponse(file, new URL(req.url).searchParams.has("download"));
 }

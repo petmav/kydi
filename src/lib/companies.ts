@@ -1,11 +1,9 @@
-import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import { db, type Tx } from "@/lib/db";
 import { getRolePresets } from "@/lib/role-presets";
 import { saveCompanySettings, type SettingKey } from "@/lib/settings";
 import { randomToken } from "@/lib/auth/tokens";
 import { slugify } from "@/lib/utils";
 
-type Tx = Prisma.TransactionClient;
 
 export type NewCompanyInput = {
   name: string;

@@ -120,7 +120,7 @@ export function CustomerForm({
                     type="password"
                     autoComplete="new-password"
                     required={!values.hasPassword}
-                    hint={values.hasPassword ? "Leave blank to keep the current password." : "At least 8 characters."}
+                    hint={values.hasPassword ? "Leave blank to keep the current password." : "At least 10 characters."}
                   />
                   <Field name="confirm" label="Confirm password" type="password" autoComplete="new-password" />
                 </div>

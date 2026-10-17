@@ -217,8 +217,7 @@ export const teamRouter: V1Router = async ({ ctx, url, seg, method, body }) => {
   }
 
   if (resource === "me") {
-    const { passwordHash: _p, ...user } = ctx.user;
-    void _p;
+    const user = ctx.user;
     if (!second && method === "GET") return ok({ data: user });
     if (!second && (method === "PUT" || method === "PATCH")) {
       const input = parseBody(memberUpdateSchema.pick({ name: true, email: true, phone: true, password: true }), body);

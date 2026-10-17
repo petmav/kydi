@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import { randomToken, sha256, signValue, unsignValue } from "@/lib/auth/tokens";
-import { isSecureRequest } from "@/lib/auth/session";
+import { secureCookies } from "@/lib/auth/cookies";
 
 /** Customer-portal sessions: separate cookie and table from staff sessions (spec §6.1). */
 export const PORTAL_COOKIE = "kydi_portal";
@@ -19,7 +19,7 @@ export async function createPortalSession(customerId: number) {
   const token = randomToken();
   const expiresAt = new Date(Date.now() + TTL);
   await db.portalSession.create({ data: { tokenHash: sha256(token), customerId, expiresAt } });
-  (await cookies()).set(PORTAL_COOKIE, signValue(token), { httpOnly: true, sameSite: "lax", secure: await isSecureRequest(), path: "/", expires: expiresAt });
+  (await cookies()).set(PORTAL_COOKIE, signValue(token), { ...(await secureCookies()), expires: expiresAt });
 }
 
 export async function destroyPortalSession() {

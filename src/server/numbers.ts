@@ -1,10 +1,8 @@
-import type { Prisma } from "@prisma/client";
-import { db } from "@/lib/db";
+import { db, type Tx } from "@/lib/db";
 import { getCompanySettings } from "@/lib/settings";
 import { renderNumber } from "@/domain/numbering";
 import { todayIn } from "@/lib/dates";
 
-type Tx = Prisma.TransactionClient;
 export type NumberKind = "invoice" | "credit_note" | "estimate" | "payment";
 
 async function maxSeq(tx: Tx, companyId: number, kind: NumberKind, customerId?: number) {

@@ -29,7 +29,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ type: st
   if (type === "statement") {
     if (!owner && !m.role.abilities.includes("view-customer")) return new Response("Forbidden", { status: 403 });
     if (!parseIsoDate(to) || (q("type") !== "outstanding" && !parseIsoDate(from))) return new Response("from/to required", { status: 422 });
-    const d = await buildStatement(m.companyId, Number(rest[0]), q("type") === "outstanding" ? "outstanding" : "activity", from, to);
+    const customerId = Number(rest[0]);
+    if (!Number.isInteger(customerId) || customerId <= 0) return new Response("Not found", { status: 404 });
+    const d = await buildStatement(m.companyId, customerId, q("type") === "outstanding" ? "outstanding" : "activity", from, to);
     if (!d) return new Response("Not found", { status: 404 });
     return pdfResponse({ buffer: await renderSimplePdf(d), filename: `statement-${rest[0]}.pdf` }, download);
   }

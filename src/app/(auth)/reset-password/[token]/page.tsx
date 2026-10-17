@@ -14,7 +14,7 @@ export default async function ResetPasswordPage({ params }: { params: Promise<{ 
   const record = await db.passwordResetToken.findUnique({ where: { tokenHash: sha256(token) } });
   const valid = record && !record.usedAt && record.expiresAt.getTime() > Date.now();
   return (
-    <AuthCard title="Choose a new password" subtitle="Use at least 8 characters.">
+    <AuthCard title="Choose a new password" subtitle="Use at least 10 characters.">
       {valid ? (
         <ResetForm token={token} />
       ) : (

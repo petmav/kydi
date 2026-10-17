@@ -65,10 +65,13 @@ export async function sendMail(message: MailMessage): Promise<{ delivered: boole
         `  subject: ${payload.subject}`,
         payload.attachments?.length ? `  attachments: ${payload.attachments.map((a) => a.filename).join(", ")}` : null,
         "  ---",
-        payload.text
-          .split("\n")
-          .map((l) => `  ${l}`)
-          .join("\n"),
+        // Bodies contain sign-in, reset and document links plus personal data: production logs withhold them.
+        env.isProduction && process.env.KYDI_LOG_MAIL_BODIES !== "true"
+          ? "  (body withheld in production; configure SMTP, or set KYDI_LOG_MAIL_BODIES=true temporarily)"
+          : payload.text
+              .split("\n")
+              .map((l) => `  ${l}`)
+              .join("\n"),
       ]
         .filter(Boolean)
         .join("\n"),

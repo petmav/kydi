@@ -47,7 +47,7 @@ export function PasswordForm() {
   return (
     <Form action={changePasswordAction} className="space-y-4" resetOnSuccess>
       <Field name="current" type="password" label="Current password" required autoComplete="current-password" />
-      <Field name="password" type="password" label="New password" required autoComplete="new-password" hint="At least 8 characters." />
+      <Field name="password" type="password" label="New password" required autoComplete="new-password" hint="At least 10 characters; avoid common passwords." />
       <Field name="confirm" type="password" label="Confirm new password" required autoComplete="new-password" />
       <div className="flex justify-end">
         <SubmitButton pendingLabel="Updating…">Update password</SubmitButton>

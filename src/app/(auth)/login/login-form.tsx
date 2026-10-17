@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Field, Form, SubmitButton } from "@/components/form";
 import { loginAction } from "../actions";
 
-export function LoginForm({ next, demo }: { next?: string; demo?: boolean }) {
+/** `prefill` is only passed in local development with demo data; production never pre-fills credentials. */
+export function LoginForm({ next, prefill }: { next?: string; prefill?: { email: string; password: string } }) {
   return (
     <Form action={loginAction} className="space-y-4" showErrorSummary>
       <input type="hidden" name="next" value={next ?? ""} />
@@ -15,7 +16,7 @@ export function LoginForm({ next, demo }: { next?: string; demo?: boolean }) {
         autoComplete="email"
         required
         autoFocus
-        defaultValue={demo ? "admin@kydi.test" : undefined}
+        defaultValue={prefill?.email}
       />
       <div>
         <Field
@@ -24,7 +25,7 @@ export function LoginForm({ next, demo }: { next?: string; demo?: boolean }) {
           label="Password"
           autoComplete="current-password"
           required
-          defaultValue={demo ? "password123" : undefined}
+          defaultValue={prefill?.password}
         />
         <div className="mt-2 text-right">
           <Link href="/forgot-password" className="text-sm font-medium text-brand-700 hover:underline focus-ring rounded">

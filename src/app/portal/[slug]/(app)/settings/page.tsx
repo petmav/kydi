@@ -6,8 +6,7 @@ import { PortalProfileForm } from "../../forms";
 export default async function PortalSettings({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const { customer } = await requirePortalCustomer(slug);
-  const { portalPasswordHash: _h, ...rest } = customer;
-  void _h;
+  const rest = customer;
   const profile = Object.fromEntries(Object.entries(rest).filter(([, v]) => typeof v === "string" || v === null)) as Record<string, string | null>;
   return (
     <>

@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 describe("secrets at rest", () => {
   it("round-trips and never stores the plain value", () => {
     const enc = encryptSecret("smtp-p4ss", "secret-one-0123456789");
-    expect(enc.startsWith("v1:")).toBe(true);
+    expect(enc.startsWith("v2:")).toBe(true);
     expect(enc).not.toContain("smtp-p4ss");
     expect(decryptSecret(enc, "secret-one-0123456789")).toBe("smtp-p4ss");
   });

@@ -1,22 +1,18 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { failure, parseForm, success, zEmail, zPassword, type ActionState } from "@/lib/action";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPasswordOrDummy } from "@/lib/auth/password";
+import { checkPasswordPolicy } from "@/lib/auth/password-policy";
+import { clientIp } from "@/lib/auth/cookies";
 import { createSession, destroySession } from "@/lib/auth/session";
 import { randomToken, sha256 } from "@/lib/auth/tokens";
-import { rateLimit, resetRateLimit } from "@/lib/rate-limit";
+import { clearCredentialFailures, rateLimit, throttleCredentials } from "@/lib/rate-limit";
 import { sendPlatformMail } from "@/server/mailer";
 import { getBaseUrl, safeNext } from "@/lib/url";
 import { setFlash } from "@/lib/flash";
-
-async function clientIp() {
-  const h = await headers();
-  return (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || h.get("x-real-ip") || "local";
-}
 
 const loginSchema = z.object({
   email: zEmail,
@@ -29,18 +25,17 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
   if (!parsed.success) return parsed.state;
   const { email, password, next } = parsed.data;
 
-  const key = `login:${await clientIp()}:${email}`;
-  const limit = rateLimit(key, 8, 15 * 60 * 1000);
+  const limit = throttleCredentials("login", await clientIp(), email);
   if (!limit.ok) {
     return failure(`Too many sign-in attempts. Try again in ${Math.ceil(limit.retryAfterMs / 60000)} minute(s).`);
   }
 
-  const user = await db.user.findUnique({ where: { email } });
-  const valid = user ? await verifyPassword(user.passwordHash, password) : false;
+  const user = await db.user.findUnique({ where: { email }, select: { id: true, passwordHash: true } });
+  const valid = await verifyPasswordOrDummy(user?.passwordHash, password);
   if (!user || !valid) {
     return failure("Incorrect email or password.", { password: ["Incorrect email or password."] });
   }
-  resetRateLimit(key);
+  clearCredentialFailures("login", email);
   await createSession(user.id);
   redirect(safeNext(next));
 }
@@ -57,8 +52,11 @@ export async function forgotPasswordAction(_prev: ActionState, formData: FormDat
   if (!parsed.success) return parsed.state;
   const { email } = parsed.data;
 
-  const limit = rateLimit(`forgot:${await clientIp()}`, 5, 15 * 60 * 1000);
-  if (!limit.ok) return failure("Too many requests. Please wait a few minutes and try again.");
+  const ipLimit = rateLimit(`forgot:ip:${await clientIp()}`, 5, 15 * 60 * 1000);
+  const accountLimit = rateLimit(`forgot:acct:${email}`, 3, 60 * 60 * 1000);
+  if (!ipLimit.ok) return failure("Too many requests. Please wait a few minutes and try again.");
+  // Over the per-account budget: answer exactly like a normal request, but send nothing.
+  if (!accountLimit.ok) return success("If an account exists for that email, a reset link is on its way.");
 
   const user = await db.user.findUnique({ where: { email } });
   if (user) {
@@ -86,15 +84,23 @@ export async function resetPasswordAction(_prev: ActionState, formData: FormData
   if (!parsed.success) return parsed.state;
   const { token, password } = parsed.data;
 
-  const record = await db.passwordResetToken.findUnique({ where: { tokenHash: sha256(token) } });
-  if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) {
-    return failure("This reset link is invalid or has expired. Request a new one.");
-  }
-  await db.$transaction([
-    db.user.update({ where: { id: record.userId }, data: { passwordHash: await hashPassword(password) } }),
-    db.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
-    db.session.deleteMany({ where: { userId: record.userId } }),
-  ]);
+  const invalid = "This reset link is invalid or has expired. Request a new one.";
+  const record = await db.passwordResetToken.findUnique({ where: { tokenHash: sha256(token) }, include: { user: { select: { email: true, name: true } } } });
+  if (!record || record.usedAt || record.expiresAt.getTime() < Date.now()) return failure(invalid);
+  const weak = checkPasswordPolicy(password, record.user);
+  if (weak) return failure(weak, { password: [weak] });
+  const passwordHash = await hashPassword(password);
+  const done = await db.$transaction(async (tx) => {
+    // Single use even under concurrent submissions: only the request that flips usedAt proceeds.
+    const claimed = await tx.passwordResetToken.updateMany({ where: { id: record.id, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
+    if (claimed.count !== 1) return false;
+    await tx.user.update({ where: { id: record.userId }, data: { passwordHash } });
+    await tx.passwordResetToken.deleteMany({ where: { userId: record.userId, usedAt: null } });
+    await tx.session.deleteMany({ where: { userId: record.userId } });
+    await tx.apiToken.deleteMany({ where: { userId: record.userId } });
+    return true;
+  });
+  if (!done) return failure(invalid);
   await setFlash("Password updated. Sign in with your new password.");
   redirect("/login");
 }

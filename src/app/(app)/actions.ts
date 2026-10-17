@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { COMPANY_COOKIE, requireUser } from "@/lib/auth/context";
 import { setFlash } from "@/lib/flash";
+import { secureCookies } from "@/lib/auth/cookies";
 
 export async function switchCompanyAction(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -16,7 +17,7 @@ export async function switchCompanyAction(formData: FormData): Promise<void> {
   });
   if (!membership) redirect("/dashboard");
   const jar = await cookies();
-  jar.set(COMPANY_COOKIE, String(companyId), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+  jar.set(COMPANY_COOKIE, String(companyId), { ...(await secureCookies()), maxAge: 60 * 60 * 24 * 365 });
   await db.user.update({ where: { id: user.id }, data: { lastCompanyId: companyId } });
   await setFlash(`Switched to ${membership.company.name}.`, "info");
   redirect("/dashboard");

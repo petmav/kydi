@@ -9,9 +9,23 @@ const nextConfig: NextConfig = {
     "/**": ["./node_modules/pdfkit/js/standard-fonts/**/*", "./node_modules/pdfkit/package.json", "./assets/fonts/**/*"],
   },
   serverExternalPackages: ["@node-rs/argon2", "@react-pdf/renderer", "nodemailer"],
+  // Static subset for every response, including /_next/static assets that bypass the middleware.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()" },
+        ],
+      },
+    ];
+  },
   experimental: {
     serverActions: {
-      bodySizeLimit: "10mb",
+      // Receipts may be up to 20 MB (spec §10.2) plus form overhead.
+      bodySizeLimit: "21mb",
     },
   },
 };
