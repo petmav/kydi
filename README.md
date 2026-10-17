@@ -99,7 +99,8 @@ Not built yet (planned, in this order):
 - Purchasing: no bill attachments, no bill PDF, no supplier credits raised against expenses, no line-quantity
   tracking for partial credits (the credit total is capped instead), recurring costs do not email the creator,
   and purchasing has no REST API endpoints or custom fields yet.
-- End-to-end smoke test suite.
+- The end-to-end suite drives the HTTP API, renders pages with a session cookie and calls server functions
+  directly; it does not click through the UI in a browser (no Playwright).
 
 ## Tech stack
 
@@ -124,8 +125,26 @@ Without seeding, open http://localhost:3000 and the install wizard creates the f
 > Local settings live in `.env`. `.env.local` is reserved for preview-safe secrets because `zenith up` uploads it
 > to the preview session; a localhost `DATABASE_URL` there would override the preview database.
 
-Scripts: `npm run build`, `npm run lint`, `npm test` (domain tests incl. the spec's worked examples),
+Scripts: `npm run build`, `npm run lint`, `npm test` (domain tests incl. the spec's worked examples, sanitiser,
+mail signing, exchange rates, purchasing maths and a Unicode PDF render), `npm run test:e2e` (see below),
 `npm run db:seed`, `npm run db:reset`.
+
+### End-to-end smoke tests
+
+`npm run test:e2e` runs `e2e/smoke.test.ts` against a running server and the same database (`DATABASE_URL`,
+`SESSION_SECRET` from `.env`):
+
+```bash
+npm run build
+npx next start -p 3100            # or set E2E_BASE_URL to another server
+npm run test:e2e
+```
+
+It creates a throw-away administrator and company, then covers: login page and API login, create customer,
+create invoice (server totals), mark sent and record a payment that settles it, invoice PDF download, saving an
+invoice with "Make recurring" switched on (it must create a recurring invoice and no invoice), the purchasing
+rules (bill totals, payment allocation, void, credit against a bill, refund limits) and 32 screens rendered with a
+session cookie. Everything it created is deleted at the end.
 
 ## Zenith preview
 
