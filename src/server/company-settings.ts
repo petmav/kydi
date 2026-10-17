@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { zOptionalString } from "@/lib/action";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import { isTimezone } from "@/lib/intl-data";
 import { validateNumberFormat } from "@/domain/numbering";
 import type { SettingKey } from "@/lib/settings";
@@ -44,7 +45,7 @@ const numberFormat = z
     const err = validateNumberFormat(v);
     if (err) c.addIssue({ code: z.ZodIssueCode.custom, message: err });
   });
-const html = z.string().max(65000);
+const html = z.string().max(65000).transform((v) => sanitizeHtml(v));
 const days = z.coerce.number().int().min(0).max(365).transform(String);
 
 export const SETTINGS_SECTIONS = {

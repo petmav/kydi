@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import { getCompanySettings } from "@/lib/settings";
 import { countryName } from "@/lib/intl-data";
 import { formatMoney } from "@/lib/money";
@@ -17,13 +18,8 @@ export type EmailFields = { to: string; cc?: string | null; bcc?: string | null;
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-/** Strips scripts/handlers from user-authored HTML before it goes into emails. */
-export function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<\s*(script|style|iframe|object|embed)[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
-    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/(href|src)\s*=\s*(["'])\s*javascript:[^"']*\2/gi, "$1=$2#$2");
-}
+/** Allow-list sanitiser applied to user-authored HTML before it goes into emails (spec §10.2). */
+export { sanitizeHtml };
 
 async function loadDoc(companyId: number, kind: DocKind, id: number) {
   if (kind === "invoice") {

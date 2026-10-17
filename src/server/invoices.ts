@@ -1,3 +1,4 @@
+import { cleanRichText } from "@/lib/sanitize-html";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { CompanyContext } from "@/lib/auth/context";
@@ -82,7 +83,7 @@ export async function saveInvoice(ctx: CompanyContext, id: number | null, input:
         invoiceTime: ctx.settings.invoice_use_time === "YES" ? (doc.time ?? existing?.invoiceTime ?? nowTimeIn(ctx.settings.time_zone)) : null,
         dueDate: doc.closingDate,
         templateName: template,
-        notes: input.notes || null,
+        notes: cleanRichText(input.notes),
         ...totalsData(doc),
         baseSubTotal: doc.result.baseSubTotal,
         baseDiscountVal: doc.result.baseDiscountVal,
