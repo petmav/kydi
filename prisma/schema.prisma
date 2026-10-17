@@ -118,6 +118,7 @@ model Company {
   exchangeRateLogs ExchangeRateLog[]
   emailLogs  EmailLog[]
   mailConfig MailConfig?
+  exchangeRateProviders ExchangeRateProvider[]
 }
 
 model CompanySetting {
@@ -789,4 +790,21 @@ model MailConfig {
   secrets     String?
   updatedAt   DateTime @updatedAt
   company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+/// Exchange-rate provider (spec §3.16). The API key is AES-256-GCM encrypted and never sent to the browser.
+model ExchangeRateProvider {
+  id           Int      @id @default(autoincrement())
+  companyId    Int
+  driver       String
+  keyEncrypted String
+  currencies   String[]
+  /// Driver options, e.g. { "planType": "FREE", "url": "https://..." } for currency_converter.
+  driverConfig Json     @default("{}")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, active])
 }

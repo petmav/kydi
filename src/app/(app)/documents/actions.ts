@@ -7,7 +7,7 @@ import { getCompanyContext, requireAbility } from "@/lib/auth/context";
 import { isCurrency } from "@/lib/intl-data";
 import { formatDateTime, parseIsoDate, zonedToUtc } from "@/lib/dates";
 import { isValidCron, upcomingOccurrences } from "@/domain/cron";
-import { lastExchangeRate } from "@/server/documents";
+import { lookupRate } from "@/server/exchange-rates";
 import { nextNumber, type NumberKind } from "@/server/numbers";
 
 export async function suggestNumberAction(kind: NumberKind, customerId: number): Promise<string> {
@@ -16,9 +16,11 @@ export async function suggestNumberAction(kind: NumberKind, customerId: number):
   return (await nextNumber(ctx.companyId, kind, c?.id ?? null)).number;
 }
 
+/** Spec §4.12: provider quote, else the last logged rate, else null (the user types the rate). */
 export async function lookupRateAction(currency: string): Promise<number | null> {
   const ctx = await getCompanyContext();
-  return lastExchangeRate(ctx.companyId, currency);
+  if (!isCurrency(currency)) return null;
+  return (await lookupRate(ctx.companyId, currency, ctx.settings.currency))?.rate ?? null;
 }
 
 const quickCustomer = z.object({
