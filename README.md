@@ -217,11 +217,14 @@ PRODUCTION.md.
 ## Accepting payments with Stripe
 
 Each company connects its own Stripe account under **Settings → Online payments** (owner only). The page walks
-the owner through it; the owner only creates a Stripe account and pastes one key.
+the owner through it, including a picture-by-picture "Show me how" for creating the key (screenshots in
+`public/help/stripe`, with account details and the key value removed; retake them when Stripe changes its
+Dashboard). The owner only creates a Stripe account and pastes one key.
 
 1. **Stripe account.** Sign up at Stripe. To take real payments, finish *Activate payments* (business and bank
    details); payouts go to that bank account. Use a [sandbox](https://docs.stripe.com/sandboxes) to test first.
-2. **Restricted key.** Developers → API keys → Create restricted key → *Custom permissions*, and grant only
+2. **Restricted key.** Developers → API keys → Create secret key → *Building your own integration* →
+   *Custom permissions*, and grant only
    **Checkout Sessions: Write**, **Balance: Read** and **Webhook Endpoints, Event Destinations: Write**.
 3. **Paste it into Kydi** and save. Kydi checks the key, registers its webhook
    (`https://<APP_URL host>/api/payments/stripe/<companyId>`, the four `checkout.session.*` events, API version

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { CheckboxField, Field, SelectField, type FormAction } from "@/components/form";
 import { SectionForm } from "@/components/settings/forms";
+import { StripeKeyGuide } from "@/components/settings/stripe-key-guide";
 
 type Driver = "demo" | "stripe";
 type View = { enabled: boolean; driver: Driver; secretsSet: string[]; demoAllowed: boolean; webhook: "auto" | "manual" | null };
@@ -81,8 +82,8 @@ export function PaymentGatewayForm({ action, view, labels, webhookUrl }: { actio
                 <p className="font-semibold">2. Create a restricted key</p>
                 <p className="text-muted">
                   Open <StripeLink href="https://dashboard.stripe.com/apikeys">API keys</StripeLink> (or{" "}
-                  <StripeLink href="https://dashboard.stripe.com/test/apikeys">test-mode keys</StripeLink>), choose <strong>Create restricted key</strong>, then{" "}
-                  <strong>Custom permissions</strong>. Leave everything at None except these (copy a name into Stripe&apos;s search box):
+                  <StripeLink href="https://dashboard.stripe.com/test/apikeys">test-mode keys</StripeLink>), click <strong>Create secret key</strong>, keep{" "}
+                  <strong>Building your own integration</strong>, then choose <strong>Custom permissions</strong>. Leave everything at None except these (copy a name into Stripe&apos;s search box):
                 </p>
                 <ul className="flex flex-wrap gap-2 text-xs">
                   {KEY_PERMISSIONS.map((p) => (
@@ -92,6 +93,7 @@ export function PaymentGatewayForm({ action, view, labels, webhookUrl }: { actio
                     </li>
                   ))}
                 </ul>
+                <StripeKeyGuide />
               </li>
               <li className="space-y-2">
                 <p className="font-semibold">3. Paste the key here</p>
