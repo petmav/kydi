@@ -117,6 +117,7 @@ model Company {
   notes      Note[]
   exchangeRateLogs ExchangeRateLog[]
   emailLogs  EmailLog[]
+  mailConfig MailConfig?
 }
 
 model CompanySetting {
@@ -771,4 +772,21 @@ model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+/// Outgoing mail configuration (spec §5.12 / §5.13). companyId null = platform default. Secrets are
+/// AES-256-GCM encrypted (src/lib/secrets.ts) and never sent to the browser.
+model MailConfig {
+  id          Int      @id @default(autoincrement())
+  companyId   Int?     @unique
+  enabled     Boolean  @default(true)
+  driver      String
+  fromAddress String?
+  fromName    String?
+  /// Non-secret driver fields: host, port, username, encryption, domain, endpoint, region, key id.
+  options     Json     @default("{}")
+  /// Encrypted JSON of secret driver fields: password, secret, token.
+  secrets     String?
+  updatedAt   DateTime @updatedAt
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }

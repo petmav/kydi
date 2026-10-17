@@ -5,6 +5,8 @@ import { z } from "zod";
 import { failure, formToObject, guard, parseForm, success, type ActionState } from "@/lib/action";
 import { requireSuperAdmin } from "@/lib/auth/context";
 import { saveRolePreset } from "@/lib/role-presets";
+import { saveMailConfig } from "@/server/mail-settings";
+import { sendPlatformMail } from "@/server/mailer";
 import {
   adminCompanySchema,
   adminDeleteCompany,
@@ -77,5 +79,40 @@ export async function saveRolePresetAction(_prev: ActionState, formData: FormDat
     if (!r.ok) return failure(r.error, { abilities: [r.error] });
     revalidatePath("/admin", "layout");
     return success("Preset saved and applied to every company.");
+  });
+}
+
+/** Spec §5.13 Settings › Mail configuration: platform default used by companies without their own. */
+export async function savePlatformMailAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return guard(async () => {
+    await requireSuperAdmin();
+    const r = await saveMailConfig(null, formToObject(formData));
+    if (!r.ok) return failure(r.error, r.fieldErrors);
+    revalidatePath("/admin/mail");
+    return success("Platform mail configuration saved.");
+  });
+}
+
+const testSchema = z.object({
+  to: z.string().trim().toLowerCase().email("Enter a valid email address."),
+  subject: z.string().trim().min(1, "Enter a subject.").max(255),
+  message: z.string().trim().min(1, "Enter a message.").max(5000),
+});
+
+export async function sendPlatformTestMailAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return guard(async () => {
+    await requireSuperAdmin();
+    const parsed = parseForm(testSchema, formData);
+    if (!parsed.success) return parsed.state;
+    try {
+      const res = await sendPlatformMail({
+        to: parsed.data.to,
+        subject: parsed.data.subject,
+        html: `<p>${parsed.data.message.replace(/[<>&]/g, "").replace(/\n/g, "<br>")}</p><p>Sent by Kydi administration.</p>`,
+      });
+      return success(res.delivered ? `Test email sent via ${res.transport}.` : "No mail server is configured: the email was written to the server log.");
+    } catch (err) {
+      return failure(`Sending failed: ${err instanceof Error ? err.message : "unknown error"}`);
+    }
   });
 }

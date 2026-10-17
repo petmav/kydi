@@ -1,23 +1,27 @@
 import type { Metadata } from "next";
-import { Alert, Card, CardBody, CardHeader, DescriptionList } from "@/components/ui/primitives";
+import { Alert, Card, CardBody, CardHeader } from "@/components/ui/primitives";
 import { Forbidden } from "@/components/forbidden";
 import { Field, TextareaField } from "@/components/form";
 import { NewButton } from "@/components/settings/forms";
+import { MailConfigForm } from "@/components/settings/mail-config-form";
 import { getCompanyContext } from "@/lib/auth/context";
 import { env } from "@/lib/env";
-import { sendTestMailAction } from "../misc-actions";
+import { DRIVER_LABELS } from "@/lib/mail-config";
+import { getMailConfigView } from "@/server/mail-settings";
+import { sendTestMailAction, saveMailConfigAction } from "../misc-actions";
 
 export const metadata: Metadata = { title: "Mail configuration" };
 
 export default async function MailPage() {
   const ctx = await getCompanyContext();
   if (!ctx.isOwner) return <Forbidden message="Only the company owner can manage mail configuration." />;
-  const configured = !!env.smtp.host;
+  const [own, platform] = await Promise.all([getMailConfigView(ctx.companyId), getMailConfigView(null)]);
+  const fallback = platform.exists && platform.enabled ? `the platform mail configuration (${DRIVER_LABELS[platform.driver]})` : env.smtp.host ? "the installation SMTP server" : "the server log (no mail server is configured)";
   return (
     <Card>
       <CardHeader
         title="Mail configuration"
-        description="Kydi uses the installation's SMTP settings (environment variables)."
+        description="Choose how this company sends invoices, estimates, receipts and notifications."
         actions={
           <NewButton label="Send test mail" title="Send a test email" action={sendTestMailAction}>
             <Field name="to" label="To" type="email" required defaultValue={ctx.user.email} />
@@ -27,26 +31,16 @@ export default async function MailPage() {
         }
       />
       <CardBody className="space-y-4">
-        {configured ? (
-          <Alert tone="success" title="Using global mail configuration">
-            Emails are delivered through SMTP.
+        {own.enabled ? (
+          <Alert tone="success" title={`Using custom mail configuration (${DRIVER_LABELS[own.driver]})`}>
+            Save first, then send a test mail to check the settings.
           </Alert>
         ) : (
-          <Alert tone="warning" title="SMTP not configured">
-            Emails are written to the server log (stdout) instead of being delivered. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS and SMTP_FROM to
-            enable delivery.
+          <Alert tone="info" title="Using global mail configuration">
+            Emails are sent through {fallback}.
           </Alert>
         )}
-        <DescriptionList
-          items={[
-            { label: "Driver", value: configured ? "SMTP" : "Log (stdout)" },
-            { label: "Host", value: env.smtp.host || null },
-            { label: "Port", value: configured ? String(env.smtp.port) : null },
-            { label: "Encryption", value: configured ? (env.smtp.port === 465 ? "SSL/TLS" : "STARTTLS when offered") : null },
-            { label: "From", value: env.smtp.from },
-          ]}
-        />
-        <p className="text-xs text-muted">Per-company mail drivers (Mailgun, SES, Postmark) are not available in this version.</p>
+        <MailConfigForm action={saveMailConfigAction} view={own} toggleLabel="Use custom mail configuration" />
       </CardBody>
     </Card>
   );

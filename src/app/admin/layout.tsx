@@ -14,6 +14,7 @@ const NAV = [
   { href: "/admin/companies", label: "Companies" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/role-presets", label: "Role presets" },
+  { href: "/admin/mail", label: "Mail configuration" },
   { href: "/admin/modules", label: "Modules" },
   { href: "/admin/system", label: "System" },
 ];

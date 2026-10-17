@@ -1,7 +1,12 @@
-import { sendMail, type MailMessage } from "@/lib/mail";
+import type { MailMessage } from "@/lib/mail";
+import { deliver } from "@/server/mail-transport";
 
-/** Sends mail on behalf of a company. Uses the installation transport (per-company drivers come later). */
+/** Sends mail on behalf of a company: its own mail configuration when switched on, else the platform one. */
 export async function sendCompanyMail(companyId: number, message: MailMessage) {
-  void companyId;
-  return sendMail(message);
+  return deliver(companyId, message);
+}
+
+/** Installation mail (password resets, staff notifications): platform configuration, then environment SMTP. */
+export async function sendPlatformMail(message: MailMessage) {
+  return deliver(null, message);
 }

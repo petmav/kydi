@@ -6,7 +6,8 @@ import { formatDate, isoDate } from "@/lib/dates";
 import { companyValues, customerValues, fillPlaceholders } from "@/lib/placeholders";
 import { customFieldPlaceholders } from "@/lib/custom-fields";
 import { randomToken } from "@/lib/auth/tokens";
-import { sendMail } from "@/lib/mail";
+import { sendCompanyMail } from "@/server/mailer";
+import { senderFor } from "@/server/mail-transport";
 import { getBaseUrl } from "@/lib/url";
 import { invoiceTransitions, estimateTransitions } from "@/domain/status";
 import { pdfFor } from "./pdf";
@@ -60,7 +61,7 @@ export async function emailDefaults(companyId: number, kind: DocKind, id: number
   const m = await placeholderMap(companyId, kind, id);
   if (!m) return null;
   return {
-    from: process.env.SMTP_FROM || "Kydi <no-reply@kydi.local>",
+    from: await senderFor(companyId),
     to: m.doc.customer.email ?? "",
     cc: "",
     bcc: "",
@@ -101,10 +102,10 @@ export async function sendDocumentEmail(companyId: number, kind: DocKind, id: nu
   const attach = r.m.settings[`${kind}_email_attachment`] === "YES";
   const pdf = attach ? await pdfFor(kind, companyId, id) : null;
   await db.emailLog.create({
-    data: { companyId, from: process.env.SMTP_FROM || "Kydi <no-reply@kydi.local>", to: fields.to, cc: fields.cc || null, bcc: fields.bcc || null, subject: r.subject, body: r.html, mailableType: kind, mailableId: id, token },
+    data: { companyId, from: await senderFor(companyId), to: fields.to, cc: fields.cc || null, bcc: fields.bcc || null, subject: r.subject, body: r.html, mailableType: kind, mailableId: id, token },
   });
   try {
-    const res = await sendMail({
+    const res = await sendCompanyMail(companyId, {
       to: fields.to,
       cc: fields.cc ? fields.cc.split(",").map((s) => s.trim()).filter(Boolean) : undefined,
       bcc: fields.bcc ? fields.bcc.split(",").map((s) => s.trim()).filter(Boolean) : undefined,
@@ -151,7 +152,7 @@ async function notifyViewed(companyId: number, kind: "invoice" | "estimate", num
   const s = await getCompanySettings(companyId);
   if (s[`notify_${kind}_viewed`] !== "YES" || !s.notification_email) return;
   const url = `${await getBaseUrl()}${path}`;
-  await sendMail({
+  await sendCompanyMail(companyId, {
     to: s.notification_email,
     subject: `${customer} viewed ${kind} ${number}`,
     html: `<p>${esc(customer)} has viewed ${kind} <strong>${esc(number)}</strong>.</p><p><a href="${url}">Open in Kydi</a></p><p>— Kydi</p>`,
