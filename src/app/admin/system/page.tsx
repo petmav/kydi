@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "System · Administration" };
 
 const ROWS: [string, string][] = [
   ["PDF generation", "Built-in renderer with A4 pages and three templates per document type. An external rendering service is not supported."],
-  ["Fonts", "PDFs use the built-in Helvetica font (Latin-1 characters only)."],
+  ["Fonts", "PDFs use the bundled DejaVu Sans font (Latin, Latin Extended, Greek and Cyrillic). Changing the PDF font is not supported."],
   ["File disks", "Files are stored on the local disk set by UPLOAD_DIR (a named volume in the container). Remote disks are not supported."],
   ["Backups", "Not available in the application. Back up the PostgreSQL database and the uploads volume with your hosting tools."],
   ["Currencies", "The ISO 4217 list built into the runtime is used; editing currencies is not supported."],

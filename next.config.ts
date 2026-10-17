@@ -5,7 +5,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // pdfkit loads its standard fonts through a package imports map that file tracing cannot follow.
   outputFileTracingIncludes: {
-    "/**": ["./node_modules/pdfkit/js/standard-fonts/**/*", "./node_modules/pdfkit/package.json"],
+    // The bundled DejaVu Sans PDF font (src/pdf/fonts.ts) is read from disk at runtime.
+    "/**": ["./node_modules/pdfkit/js/standard-fonts/**/*", "./node_modules/pdfkit/package.json", "./assets/fonts/**/*"],
   },
   serverExternalPackages: ["@node-rs/argon2", "@react-pdf/renderer", "nodemailer"],
   experimental: {
