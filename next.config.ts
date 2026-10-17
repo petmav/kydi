@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  // Kydi does not use next/image; the optional sharp/libvips binaries are removed from the container image.
+  images: { unoptimized: true },
   // pdfkit loads its standard fonts through a package imports map that file tracing cannot follow.
   outputFileTracingIncludes: {
     // The bundled DejaVu Sans PDF font (src/pdf/fonts.ts) is read from disk at runtime.

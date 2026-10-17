@@ -19,13 +19,18 @@ RUN npm ci --no-audit --no-fund
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate && npm run build
+# sharp/libvips (optional Next.js image optimiser, LGPL binaries) is unused: images.unoptimized in next.config.ts.
+RUN npx prisma generate && npm run build \
+ && rm -rf .next/standalone/node_modules/sharp .next/standalone/node_modules/@img
 
 # ---- prisma-cli: the migration CLI only (no application dev dependencies) ---
 FROM base AS prisma-cli
 WORKDIR /opt/prisma-cli
+# deepmerge-ts is overridden like in package.json (GHSA-ggr8-5vv4-36mx; Prisma 6 pins 7.1.5).
 RUN npm init -y >/dev/null \
+ && npm pkg set overrides.deepmerge-ts=8.0.2 \
  && npm install --no-audit --no-fund --omit=dev prisma@6.19.3 \
+ && npm audit --omit=dev --audit-level=high \
  && npm cache clean --force
 
 # ---- runner: minimal runtime image -----------------------------------------
