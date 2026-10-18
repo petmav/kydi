@@ -29,7 +29,7 @@ export default async function NoCompanyPage({ searchParams }: { searchParams: Pr
     <main id="main" className="min-h-screen bg-canvas px-4 py-10">
       <div className="mx-auto max-w-2xl">
         <div className="mb-6 flex items-center justify-between">
-          <Logo className="text-xl" />
+          <Logo className="h-10" />
           <form action={logoutAction}>
             <button type="submit" className={buttonClass("ghost", "sm")}>
               Sign out

@@ -11,7 +11,7 @@ The publication package:
 | `zenith-compose.preview.yml` | Preview manifest for `zenith check` / `zenith up` (the preview policy forbids `x-zenith.env` and `x-zenith.storage`). |
 | `scripts/zenith-preview.mjs` (`npm run zenith:preview`) | Swaps the preview manifest in, runs `zenith check --upload-size` (and `zenith up` only with `--up`), then restores the publish manifest byte for byte. |
 | `listing.json` | Listing metadata for `zenith publish --metadata`. |
-| `publish/icon.png` | 512x512 icon (navy square, white "K"). |
+| `publish/icon.png` | 512x512 icon (the Kydi mark on white; source artwork in `brand/`). |
 | `publish/screenshots/*.png` | Real screenshots taken from a running instance with demo data (`scripts/screenshots.mjs`). The file name becomes the caption, and the first `--screenshot` becomes the cover. |
 | `SECURITY.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `PRODUCTION.md`, `CHANGELOG.md` | Policy, licences, operator runbook and release notes. |
 
