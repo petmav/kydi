@@ -12,7 +12,9 @@ export default async function PortalSettings({ params }: { params: Promise<{ slu
   return (
     <>
       <PageHeader title="Settings" description="Your contact details and portal password." />
-      <PortalProfileForm action={portalProfileAction.bind(null, slug)} profile={profile} />
+      <div data-tour="portal-settings">
+        <PortalProfileForm action={portalProfileAction.bind(null, slug)} profile={profile} />
+      </div>
     </>
   );
 }

@@ -3,6 +3,8 @@ import { getCompanyContext } from "@/lib/auth/context";
 import type { Ability } from "@/lib/abilities";
 import { logoutAction } from "../(auth)/actions";
 import { switchCompanyAction } from "./actions";
+import ProductTour from "@/components/product_tour";
+import { settingsNavItems } from "./settings/nav";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,7 @@ const NAV: Entry[] = [
   { group: "Admin", href: "/members", label: "Members", icon: "members", ownerOnly: true },
   { group: "Admin", href: "/reports", label: "Reports", icon: "reports", ability: "view-financial-reports" },
   { group: "Admin", href: "/settings", label: "Settings", icon: "settings" },
+  { group: "Main", href: "/cash-flow", label: "Cash-flow forecast", icon: "reports", ability: "dashboard" },
 ];
 
 const QUICK: (QuickCreate & { ability: Ability })[] = [
@@ -40,6 +43,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     match: n.match,
   }));
   const quickCreate = QUICK.filter((q) => ctx.can(q.ability)).map(({ href, label }) => ({ href, label }));
+  const availableTourPaths = [
+    ...nav.map((item) => item.href),
+    ...settingsNavItems(ctx).map((item) => item.href),
+    ...(ctx.can("view-recurring-invoice") ? ["/recurring-invoices"] : []),
+    ...(ctx.can("create-item") ? ["/items/new"] : []),
+    ...(ctx.can("create-customer") ? ["/customers/new"] : []),
+    ...(ctx.can("create-estimate") ? ["/estimates/new"] : []),
+    ...(ctx.can("create-invoice") ? ["/invoices/new"] : []),
+    ...(ctx.can("create-recurring-invoice") ? ["/recurring-invoices/new"] : []),
+    ...(ctx.can("create-payment") ? ["/payments/new"] : []),
+    ...(ctx.can("create-expense") ? ["/expenses/new"] : []),
+    ...(ctx.can("dashboard") || ctx.can("view-financial-reports") ? ["/cash-flow", "/anomalies"] : []),
+    ...(ctx.isSuperAdmin ? ["/admin"] : []),
+    ...(ctx.isSuperAdmin ? ["/admin"] : []),
+    ...(ctx.isSuperAdmin || ctx.memberships.some((m) => m.company.ownerId === ctx.user.id) ? ["/companies/new"] : []),
+  ];
   return (
     <AppShell
       nav={nav}
@@ -52,6 +71,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       switchAction={switchCompanyAction}
       logoutAction={logoutAction}
     >
+      <ProductTour userId={ctx.user.id} availableTourPaths={[...new Set(availableTourPaths)]} />
       {children}
     </AppShell>
   );

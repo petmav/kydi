@@ -8,6 +8,7 @@ export function Card({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn("rounded-[var(--radius-card)] border border-line bg-surface shadow-[var(--shadow-card)]", className)}
+      data-tour="content-card"
       {...props}
     />
   );
@@ -54,10 +55,10 @@ export function PageHeader({
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         {back ? <div className="mb-2 text-sm">{back}</div> : null}
-        <h1 className="truncate text-xl font-semibold text-ink">{title}</h1>
+        <h1 data-tour="page-title" className="truncate text-xl font-semibold text-ink">{title}</h1>
         {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div data-tour="page-actions" className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   );
 }
@@ -98,7 +99,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
+    <div className="flex flex-col items-center justify-center px-6 py-14 text-center" data-tour="records-table">
       {icon ? <div className="mb-3 rounded-md bg-subtle p-3 text-muted">{icon}</div> : null}
       <h3 className="text-base font-semibold text-ink">{title}</h3>
       {description ? <p className="mt-1 max-w-sm text-sm text-muted">{description}</p> : null}

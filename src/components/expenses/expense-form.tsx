@@ -38,12 +38,12 @@ export function ExpenseForm({ action, categories, customers, methods, purchaseTa
     </div>
   );
   return (
-    <Form action={action} className="space-y-6">
+    <Form action={action} className="space-y-6" data-tour="expense-form">
       <input type="hidden" name="payload" value={payload} />
       <Card>
         <CardHeader title="Expense details" />
         <CardBody className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
+          <div data-tour="expense-category">
             {sel("e-cat", "Category", v.categoryId, categories, (s) => set({ categoryId: s }), true, "Select a category…")}
             <FieldError name="categoryId" />
             {categories.length === 0 ? <p className="mt-1 text-xs text-muted">Create categories under Settings → Expense categories.</p> : null}
@@ -100,7 +100,7 @@ export function ExpenseForm({ action, categories, customers, methods, purchaseTa
             <FieldError name="taxes" />
           </CardBody>
         </Card>
-        <Card>
+        <Card data-tour="expense-receipt">
           <CardHeader title="Receipt and notes" />
           <CardBody className="space-y-4">
             {receipt ? (
@@ -123,7 +123,7 @@ export function ExpenseForm({ action, categories, customers, methods, purchaseTa
           <CardBody><CustomFieldInputs fields={customFields} values={customValues} isNew={isNew} /></CardBody>
         </Card>
       ) : null}
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2" data-tour="expense-save">
         <ButtonLink href="/expenses" variant="secondary">Cancel</ButtonLink>
         <SubmitButton pendingLabel="Saving…">{isNew ? "Save expense" : "Update expense"}</SubmitButton>
       </div>

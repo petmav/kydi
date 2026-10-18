@@ -54,7 +54,7 @@ export default async function PortalList({ params }: { params: Promise<{ slug: s
   return (
     <>
       <PageHeader title={title} />
-      <Card>{body ?? <EmptyState title={`No ${kind} yet`} description="Documents appear here once they have been sent to you." />}</Card>
+      <Card data-tour="portal-records">{body ?? <EmptyState title={`No ${kind} yet`} description="Documents appear here once they have been sent to you." />}</Card>
     </>
   );
 }

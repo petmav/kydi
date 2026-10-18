@@ -93,7 +93,7 @@ type DocumentFormProps = Parameters<typeof DocumentFormBody>[0];
 
 export function DocumentForm(props: DocumentFormProps) {
   return (
-    <Form action={props.action} className="space-y-6">
+    <Form action={props.action} className="space-y-6" data-tour="document-form">
       <DocumentFormBody {...props} />
     </Form>
   );
@@ -456,7 +456,7 @@ function DocumentFormBody({
         </Card>
       </div>
 
-      <Card>
+      <Card data-tour="document-lines">
         <CardHeader
           title="Items"
           actions={
@@ -616,7 +616,7 @@ function DocumentFormBody({
             </Card>
           ) : null}
         </div>
-        <Card className="self-start">
+        <Card className="self-start" data-tour="document-total">
           <CardHeader title="Totals" />
           <CardBody className="space-y-3 text-sm">
             <div className="flex justify-between"><span className="text-muted">Subtotal</span><span className="tabular">{money(result.subTotal)}</span></div>
@@ -677,7 +677,7 @@ function DocumentFormBody({
         </Card>
       </div>
 
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-line bg-white px-4 py-3 sm:mx-0 sm:rounded-md sm:border">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap justify-end gap-2 border-t border-line bg-white px-4 py-3 sm:mx-0 sm:rounded-md sm:border" data-tour="document-save">
         <ButtonLink href={cancelHref} variant="secondary">Cancel</ButtonLink>
         {allowSend ? (
           <SubmitButton name="intent" value="send" variant="secondary" pendingLabel="Saving…">

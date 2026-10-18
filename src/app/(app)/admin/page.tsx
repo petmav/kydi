@@ -20,7 +20,7 @@ export default async function AdminPage() {
   return (
     <>
       <PageHeader title="Administration" description="Installation overview for the platform administrator." />
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid gap-4 sm:grid-cols-3" data-tour="admin-overview">
         {[["Companies", companies.length], ["Users", users.length], ["Invoices", docs]].map(([k, v]) => (
           <Card key={k as string} className="p-4"><p className="text-xs font-medium uppercase tracking-wide text-muted">{k}</p><p className="tabular text-xl font-semibold">{v}</p></Card>
         ))}
@@ -28,14 +28,14 @@ export default async function AdminPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title="Companies" />
-          <Table>
+          <Table data-tour="admin-companies">
             <thead><tr><Th>Name</Th><Th>Owner</Th><Th className="text-right">Members</Th><Th>Created</Th></tr></thead>
             <tbody className="divide-y divide-line">{companies.map((c) => <tr key={c.id}><Td className="font-medium">{c.name}</Td><Td>{c.owner.name}</Td><Td className="tabular text-right">{c._count.members}</Td><Td className="text-muted">{df(c.createdAt)}</Td></tr>)}</tbody>
           </Table>
         </Card>
         <Card>
           <CardHeader title="Users" />
-          <Table>
+          <Table data-tour="admin-users">
             <thead><tr><Th>Name</Th><Th>Email</Th><Th>Companies</Th></tr></thead>
             <tbody className="divide-y divide-line">{users.map((u) => <tr key={u.id}><Td className="font-medium">{u.name} {u.role === "SUPER_ADMIN" ? <Badge tone="blue">Admin</Badge> : null}</Td><Td className="text-muted">{u.email}</Td><Td className="text-muted">{u.memberships.map((m) => m.company.name).join(", ")}</Td></tr>)}</tbody>
           </Table>

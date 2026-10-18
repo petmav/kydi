@@ -36,17 +36,17 @@ export function ApplyCreditForm({ action, payments, invoices, currency, locale, 
   };
   if (!payments.length || !invoices.length) {
     return (
-      <Card>
+      <Card data-tour="credit-empty">
         <EmptyState title="Nothing to apply" description={!payments.length ? "This customer has no unapplied payments." : "This customer has no open invoices."} action={<ButtonLink href={cancelHref} variant="secondary">Back</ButtonLink>} />
       </Card>
     );
   }
   const over = payments.some((p) => used("paymentId", p.id) > p.available) || invoices.some((i) => used("invoiceId", i.id) > i.available);
   return (
-    <Form action={action} className="space-y-6">
+    <Form action={action} className="space-y-6" data-tour="credit-form">
       <input type="hidden" name="payload" value={JSON.stringify(rows.filter((r) => r.paymentId && r.invoiceId).map(({ paymentId, invoiceId, amount }) => ({ paymentId, invoiceId, amount })))} />
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card data-tour="available-credit">
           <CardHeader title="Available credit" />
           <ul className="divide-y divide-line text-sm">
             {payments.map((p) => (
@@ -54,7 +54,7 @@ export function ApplyCreditForm({ action, payments, invoices, currency, locale, 
             ))}
           </ul>
         </Card>
-        <Card>
+        <Card data-tour="credit-invoices">
           <CardHeader title="Open invoices" />
           <ul className="divide-y divide-line text-sm">
             {invoices.map((i) => (
@@ -63,7 +63,7 @@ export function ApplyCreditForm({ action, payments, invoices, currency, locale, 
           </ul>
         </Card>
       </div>
-      <Card>
+      <Card data-tour="credit-allocations">
         <CardHeader title="Allocations" actions={<Button size="sm" variant="secondary" onClick={oldest}>Allocate oldest first</Button>} />
         <CardBody className="space-y-3">
           {rows.map((r) => (
@@ -84,7 +84,7 @@ export function ApplyCreditForm({ action, payments, invoices, currency, locale, 
           {over ? <p className="text-sm font-medium text-red-700">An amount exceeds the available credit or the invoice balance.</p> : null}
         </CardBody>
       </Card>
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2" data-tour="credit-save">
         <ButtonLink href={cancelHref} variant="secondary">Cancel</ButtonLink>
         <SubmitButton disabled={over || rows.length === 0} pendingLabel="Applying…">Apply credit</SubmitButton>
       </div>

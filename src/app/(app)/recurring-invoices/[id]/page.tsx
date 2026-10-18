@@ -67,7 +67,7 @@ export default async function RecurringDetailPage({ params }: { params: Promise<
             />
           </CardBody>
         </Card>
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2" data-tour="generated-invoices">
           <CardHeader title="Generated invoices" />
           {r.invoices.length === 0 ? (
             <CardBody className="text-sm text-muted">No generated invoices yet.</CardBody>

@@ -48,7 +48,7 @@ export default async function MembersPage() {
       <div className="space-y-6">
         <Card>
           <CardHeader title="Members" />
-          <Table>
+          <Table data-tour="members-list">
             <thead>
               <tr>
                 <Th>Name</Th>
@@ -92,7 +92,7 @@ export default async function MembersPage() {
             </tbody>
           </Table>
         </Card>
-        <Card>
+        <Card data-tour="pending-invitations">
           <CardHeader title="Pending invitations" />
           {invitations.length === 0 ? (
             <EmptyState title="No pending invitations" description="Invite teammates by email; they choose their own password." />

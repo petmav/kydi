@@ -33,7 +33,7 @@ type Props = {
 
 export function PaymentForm(props: Props) {
   return (
-    <Form action={props.action} className="space-y-6">
+    <Form action={props.action} className="space-y-6" data-tour="payment-form">
       <Body {...props} />
     </Form>
   );
@@ -152,7 +152,7 @@ function Body({ customers, methods, notes, company, initial, paymentId, invoices
         </CardBody>
       </Card>
 
-      <Card>
+      <Card data-tour="payment-allocation">
         <CardHeader
           title="Apply to invoices"
           description="Unallocated money stays on the customer's account as credit."
@@ -234,7 +234,7 @@ function Body({ customers, methods, notes, company, initial, paymentId, invoices
         ) : null}
       </div>
 
-      <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-2 border-t border-line bg-white px-4 py-3 sm:mx-0 sm:rounded-md sm:border">
+      <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-2 border-t border-line bg-white px-4 py-3 sm:mx-0 sm:rounded-md sm:border" data-tour="payment-save">
         <ButtonLink href={cancelHref} variant="secondary">Cancel</ButtonLink>
         <SubmitButton pendingLabel="Saving…" disabled={amountMinor - allocated < 0}>{paymentId ? "Update payment" : "Save payment"}</SubmitButton>
       </div>

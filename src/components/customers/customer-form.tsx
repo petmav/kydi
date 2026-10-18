@@ -82,7 +82,7 @@ export function CustomerForm({
 
   return (
     <div ref={formWrap}>
-      <Form action={action} className="space-y-6">
+      <Form action={action} className="space-y-6" data-tour="customer-form">
         <Card>
           <CardHeader title="Basic information" />
           <CardBody className="grid gap-4 sm:grid-cols-2">
@@ -107,7 +107,7 @@ export function CustomerForm({
           </CardBody>
         </Card>
 
-        <Card>
+        <Card data-tour="customer-portal">
           <CardHeader title="Portal access" description="Let this customer sign in to view their invoices, estimates and payments." />
           <CardBody className="space-y-4">
             <CheckboxField name="enablePortal" label="Enable portal" checked={portal} onChange={(e) => setPortal(e.target.checked)} />
@@ -174,7 +174,7 @@ export function CustomerForm({
           </Card>
         ) : null}
 
-        <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-2 border-t border-line bg-white px-4 py-3 sm:mx-0 sm:rounded-md sm:border">
+        <div className="sticky bottom-0 z-10 -mx-4 flex justify-end gap-2 border-t border-line bg-white px-4 py-3 sm:mx-0 sm:rounded-md sm:border" data-tour="customer-save">
           <ButtonLink href={cancelHref} variant="secondary">
             Cancel
           </ButtonLink>

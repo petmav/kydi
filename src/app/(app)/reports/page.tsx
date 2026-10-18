@@ -67,7 +67,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             { key: "taxes", label: "Taxes" },
           ]}
         />
-        <form method="get" className="flex flex-wrap items-end gap-3 border-b border-line px-4 py-3">
+        <form method="get" className="flex flex-wrap items-end gap-3 border-b border-line px-4 py-3" data-tour="report-filters">
           <input type="hidden" name="tab" value={tab} />
           {tab === "sales" ? (
             <label className="text-xs font-medium text-muted">
@@ -104,7 +104,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         {!valid ? <CardBody className="text-sm text-red-700">The end date must be on or after the start date.</CardBody> : null}
       </Card>
       {data ? (
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <div className="mt-6 grid gap-6 xl:grid-cols-2" data-tour="report-results">
           <Card>
             <CardHeader title={data.title} description={data.subtitle} />
             <CardBody className="space-y-6">

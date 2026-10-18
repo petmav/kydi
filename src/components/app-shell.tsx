@@ -89,6 +89,7 @@ function Dropdown({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={label}
+        data-tour={label === "Switch company" ? "company-switcher" : label === "Create new" ? "quick-create" : label === "User menu" ? "account-menu" : undefined}
         className="flex h-9 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm text-ink-2 hover:bg-subtle focus-ring"
       >
         {button}
@@ -152,7 +153,7 @@ export function AppShell({
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
-      <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4">
+      <nav aria-label="Main" data-tour="main-navigation" className="flex-1 overflow-y-auto px-3 py-4">
         {groups.map((g) => (
           <div key={g} className="mb-4">
             <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{g}</p>
@@ -166,6 +167,7 @@ export function AppShell({
                     <li key={item.href}>
                       <Link
                         href={item.href}
+                        data-tour-nav={item.href}
                         aria-current={active ? "page" : undefined}
                         className={cn(
                           "flex items-center gap-3 rounded-md px-3 py-2 text-sm focus-ring",

@@ -119,7 +119,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
               <NoResults />
             ) : (
               <div className="max-h-[70vh] overflow-auto">
-                <table className="min-w-full divide-y divide-line text-sm">
+                <table className="min-w-full divide-y divide-line text-sm" data-tour="records-table">
                   <thead>
                     <tr>
                       {canDelete ? <Th className="w-10"><SelectAll ids={rows.map((r) => r.id)} /></Th> : null}

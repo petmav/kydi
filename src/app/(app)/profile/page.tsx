@@ -13,25 +13,25 @@ export default async function ProfilePage() {
     <>
       <PageHeader title="My profile" description="Manage your personal details and sign-in security." />
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card data-tour="profile-details">
           <CardHeader title="Personal details" description="Your name and email are shown to teammates." />
           <CardBody>
             <ProfileForm name={ctx.user.name} email={ctx.user.email} />
           </CardBody>
         </Card>
-        <Card>
+        <Card data-tour="profile-security">
           <CardHeader title="Change password" description="Use a long, unique password." />
           <CardBody>
             <PasswordForm />
           </CardBody>
         </Card>
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2" data-tour="profile-sessions">
           <CardHeader title="Sessions" description={`You are signed in on ${sessions} device(s).`} />
           <CardBody>
             <SessionsCard />
           </CardBody>
         </Card>
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2" data-tour="company-access">
           <CardHeader title="Company access" />
           <CardBody>
             <ul className="divide-y divide-line text-sm">

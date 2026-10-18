@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export function SettingsNav({ items }: { items: { href: string; label: string }[] }) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Settings">
+    <nav aria-label="Settings" data-tour="settings-navigation">
       <ul className="flex gap-1 overflow-x-auto pb-2 lg:flex-col lg:overflow-visible lg:pb-0">
         {items.map((i) => {
           const active = pathname === i.href || pathname.startsWith(`${i.href}/`);

@@ -53,7 +53,7 @@ export default async function PortalDocument({ params }: { params: Promise<{ slu
         back={<Link href={`/portal/${slug}/${kind}`} className="text-brand-700 hover:underline focus-ring rounded">← Back</Link>}
         actions={<>{actions}<a href={`${pdf}?download=1`} className={buttonClass("secondary")}>Download PDF</a></>}
       />
-      <Card>
+      <Card data-tour="portal-document">
         <iframe src={pdf} title={`${title} PDF`} className="h-[80vh] w-full border-0" />
       </Card>
     </>

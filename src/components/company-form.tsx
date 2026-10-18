@@ -23,7 +23,7 @@ export function CompanyForm({
 }) {
   const guessedTz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
   return (
-    <Form action={action} className="space-y-4" showErrorSummary>
+    <Form action={action} className="space-y-4" showErrorSummary data-tour="primary-form">
       <Field name="name" label="Company name" required autoFocus autoComplete="organization" />
       <div className="grid gap-4 sm:grid-cols-2">
         <SelectField name="currency" label="Currency" required options={currencies} defaultValue="USD" />

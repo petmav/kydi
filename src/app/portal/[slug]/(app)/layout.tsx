@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requirePortalCustomer } from "@/lib/auth/portal";
 import { getCompanySettings } from "@/lib/settings";
 import { portalLogoutAction } from "../actions";
+import ProductTour from "@/components/product_tour";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function PortalLayout({ children, params }: { children: Rea
       <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
           <span className="font-bold">{title}</span>
-          <nav aria-label="Portal" className="flex flex-wrap gap-1">
+          <nav aria-label="Portal" className="flex flex-wrap gap-1" data-tour="portal-navigation">
             {nav.map(([href, label]) => (
               <Link key={href} href={`/portal/${slug}${href}`} className="rounded-md px-3 py-1.5 text-sm text-ink-2 hover:bg-subtle focus-ring">{label}</Link>
             ))}
@@ -34,6 +35,12 @@ export default async function PortalLayout({ children, params }: { children: Rea
           </div>
         </div>
       </header>
+      <ProductTour
+        userId={customer.id}
+        scope="portal"
+        portalSlug={slug}
+        availableTourPaths={nav.map(([href]) => `/portal/${slug}${href}`)}
+      />
       <main id="main" className="mx-auto max-w-6xl px-4 py-6">{children}</main>
     </div>
   );

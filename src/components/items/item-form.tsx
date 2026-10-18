@@ -85,13 +85,13 @@ export function ItemFields({
 export function ItemForm(props: Parameters<typeof ItemFields>[0] & { action: FormAction }) {
   const { action, ...rest } = props;
   return (
-    <Form action={action}>
+    <Form action={action} data-tour="item-form">
       <Card>
         <CardBody className="py-5">
           <ItemFields {...rest} />
         </CardBody>
       </Card>
-      <div className="mt-4 flex justify-end gap-2">
+      <div className="mt-4 flex justify-end gap-2" data-tour="item-save">
         <ButtonLink href="/items" variant="secondary">
           Cancel
         </ButtonLink>

@@ -12,7 +12,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
         <aside>
           <SettingsNav items={settingsNavItems(ctx)} />
         </aside>
-        <div className="min-w-0 space-y-6">{children}</div>
+        <div className="min-w-0 space-y-6" data-tour="settings-content">{children}</div>
       </div>
     </>
   );

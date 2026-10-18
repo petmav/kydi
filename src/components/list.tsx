@@ -102,7 +102,7 @@ export function FilterBar({ filters, sp, basePath }: { filters: FilterDef[]; sp:
   };
   const active = filters.some((f) => val(f.name));
   return (
-    <form method="get" action={basePath} className="flex flex-wrap items-end gap-3 border-b border-line bg-white px-4 py-3" role="search">
+    <form method="get" action={basePath} className="flex flex-wrap items-end gap-3 border-b border-line bg-white px-4 py-3" role="search" data-tour="filter-bar">
       {["sort", "dir", "limit", "tab"].map((k) => (val(k) ? <input key={k} type="hidden" name={k} value={val(k)} /> : null))}
       {filters.map((f) => (
         <div key={f.name} className="min-w-[10rem] flex-1 sm:max-w-[14rem]">
@@ -139,7 +139,7 @@ export function FilterBar({ filters, sp, basePath }: { filters: FilterDef[]; sp:
 
 export function Tabs({ tabs, current, basePath, sp }: { tabs: { key: string; label: string }[]; current: string; basePath: string; sp: SearchParams }) {
   return (
-    <nav className="flex gap-4 border-b border-line px-4" aria-label="Views">
+    <nav className="flex gap-4 border-b border-line px-4" aria-label="Views" data-tour="tabs">
       {tabs.map((t) => (
         <Link
           key={t.key}
@@ -158,5 +158,5 @@ export function Tabs({ tabs, current, basePath, sp }: { tabs: { key: string; lab
 }
 
 export function NoResults({ children }: { children?: ReactNode }) {
-  return <div className="px-6 py-12 text-center text-sm text-muted">{children ?? "No records match the current filters."}</div>;
+  return <div className="px-6 py-12 text-center text-sm text-muted" data-tour="records-table">{children ?? "No records match the current filters."}</div>;
 }

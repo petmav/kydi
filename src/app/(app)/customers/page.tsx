@@ -89,7 +89,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
               <NoResults />
             ) : (
               <div className="max-h-[70vh] overflow-auto">
-                <table className="min-w-full divide-y divide-line text-sm">
+                <table className="min-w-full divide-y divide-line text-sm" data-tour="records-table">
                   <thead>
                     <tr>
                       {ctx.can("delete-customer") ? (

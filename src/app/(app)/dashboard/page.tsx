@@ -49,7 +49,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         title="Dashboard"
         description={`${ctx.company.name} · ${period.label}: ${formatDate(period.from, s.date_format)} – ${formatDate(period.to, s.date_format)}`}
         actions={
-          <form method="get" className="flex flex-wrap items-end gap-2">
+          <form method="get" className="flex flex-wrap items-end gap-2" data-tour="dashboard-period">
             <div className="inline-flex overflow-hidden rounded-md border border-slate-300" role="group" aria-label="Period">
               {periods.map((p) => (
                 <Link key={p.key} href={`/dashboard?period=${p.key}`} aria-current={period.key === p.key ? "true" : undefined} className={cn("px-3 py-1.5 text-sm focus-ring", period.key === p.key ? "bg-brand-700 text-white" : "bg-white text-ink-2 hover:bg-subtle")}>
@@ -65,7 +65,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         }
       />
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2" data-tour="dashboard-receivables">
           <CardHeader title="Receivables" actions={ctx.can("view-invoice") ? <Link href="/invoices?tab=due" className="text-sm text-brand-700 hover:underline">View invoices</Link> : null} />
           <CardBody>
             {r.count === 0 ? (
@@ -107,7 +107,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </Link>
           ))}
         </div>
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3" data-tour="dashboard-cashflow">
           <CardHeader title="Cash flow" description={`Company currency (${s.currency}), grouped by ${d.chart.byDay ? "day" : "month"}.`} />
           <CardBody>
             <dl className="mb-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">

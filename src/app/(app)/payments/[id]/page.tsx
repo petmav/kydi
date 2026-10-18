@@ -90,7 +90,7 @@ export default async function PaymentDetailPage({ params }: { params: Promise<{ 
             </CardBody>
           </Card>
         </div>
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2" data-tour="payment-receipt">
           <CardHeader title="Receipt" />
           <iframe src={`/api/pdf/payment/${p.id}`} title={`${p.paymentNumber} receipt preview`} className="h-[80vh] w-full border-0" />
         </Card>

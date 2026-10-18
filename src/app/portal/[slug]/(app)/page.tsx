@@ -25,7 +25,7 @@ export default async function PortalDashboard({ params }: { params: Promise<{ sl
   return (
     <>
       <PageHeader title={`Welcome, ${customer.name}`} />
-      <div className="mb-6 grid gap-4 sm:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-4" data-tour="portal-summary">
         {[["Amount due", money(due._sum.dueAmount ?? 0)], ["Invoices", invCount], ["Estimates", estCount], ["Payments", payCount]].map(([k, v]) => (
           <Card key={k as string} className="p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted">{k}</p>
@@ -34,7 +34,7 @@ export default async function PortalDashboard({ params }: { params: Promise<{ sl
         ))}
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card data-tour="portal-invoices">
           <CardHeader title="Recent invoices" actions={<Link href={`/portal/${slug}/invoices`} className="text-sm text-brand-700 hover:underline">View all</Link>} />
           {invs.length === 0 ? <CardBody className="text-sm text-muted">No invoices yet.</CardBody> : (
             <ul className="divide-y divide-line text-sm">
@@ -47,7 +47,7 @@ export default async function PortalDashboard({ params }: { params: Promise<{ sl
             </ul>
           )}
         </Card>
-        <Card>
+        <Card data-tour="portal-estimates">
           <CardHeader title="Recent estimates" actions={<Link href={`/portal/${slug}/estimates`} className="text-sm text-brand-700 hover:underline">View all</Link>} />
           {ests.length === 0 ? <CardBody className="text-sm text-muted">No estimates yet.</CardBody> : (
             <ul className="divide-y divide-line text-sm">
